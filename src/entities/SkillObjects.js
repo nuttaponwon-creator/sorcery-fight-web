@@ -32,7 +32,6 @@ export class Particle extends GameObject {
     }
 }
 
-// ✅ 1. เอฟเฟกต์ฟันดาบ Toji (คลื่นขาว-ดำ ตามภาพ)
 export class KatanaSlash extends GameObject {
     constructor(x, y, angle, owner, offsetSide) {
         super(x, y);
@@ -40,79 +39,44 @@ export class KatanaSlash extends GameObject {
         this.owner = owner;
         this.life = 10; this.maxLife = 10;
         this.damage = 35; 
-        
-        // คำนวณตำแหน่งเริ่มต้น (ซ้าย/ขวา ของตัวละคร)
         const offsetDist = 30;
         const sideAngle = angle + (Math.PI / 2) * offsetSide; 
         this.x += Math.cos(sideAngle) * offsetDist;
         this.y += Math.sin(sideAngle) * offsetDist;
-        
-        // ขยับไปข้างหน้า
         this.x += Math.cos(angle) * 40;
         this.y += Math.sin(angle) * 40;
-
-        // สุ่มองศาฟันให้ดูธรรมชาติ (เอียงนิดหน่อย)
-        // ถ้า offsetSide = -1 (ซ้าย) ให้ฟันเฉียงขึ้น, 1 (ขวา) ฟันเฉียงลง
         this.slashTilt = (Math.PI / 4) * offsetSide * -1; 
     }
     update() { this.life--; if(this.life <= 0) this.dead = true; }
-    
     draw(ctx) {
         ctx.save(); 
         ctx.translate(this.x, this.y); 
-        // หมุนตามทิศทางผู้เล่น + มุมเฉียงของดาบ
         ctx.rotate(this.angle + this.slashTilt);
-        
         const ratio = this.life / this.maxLife;
-        const scale = 1 + (1 - ratio) * 0.5; // ขยายขนาดขึ้นนิดหน่อยตอนฟัน
-
+        const scale = 1 + (1 - ratio) * 0.5; 
         ctx.scale(scale, scale);
-
-        // --- วาดคลื่นดาบ (Crescent Shape) ---
-        
-        // 1. ส่วนเงาสีดำ (วาดใหญ่กว่าสีขาว)
         ctx.beginPath();
-        ctx.moveTo(-40, -10); // หางดาบ
-        ctx.quadraticCurveTo(0, -40, 60, 0); // โค้งบน
-        ctx.quadraticCurveTo(0, -25, -40, -10); // โค้งล่างกลับมาที่เดิม
-        
-        ctx.fillStyle = 'black';
-        ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.fill();
-
-        // 2. ส่วนคมดาบสีขาว (วาดทับลงไป)
+        ctx.moveTo(-40, -10); ctx.quadraticCurveTo(0, -40, 60, 0); ctx.quadraticCurveTo(0, -25, -40, -10); 
+        ctx.fillStyle = 'black'; ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(-35, -8); 
-        ctx.quadraticCurveTo(0, -32, 55, 0); 
-        ctx.quadraticCurveTo(0, -20, -35, -8); 
-        
-        ctx.fillStyle = 'white';
-        ctx.shadowBlur = 15; ctx.shadowColor = 'white';
-        ctx.fill();
-
-        // 3. ประกายไฟ (Sparkles)
+        ctx.moveTo(-35, -8); ctx.quadraticCurveTo(0, -32, 55, 0); ctx.quadraticCurveTo(0, -20, -35, -8); 
+        ctx.fillStyle = 'white'; ctx.shadowBlur = 15; ctx.shadowColor = 'white'; ctx.fill();
         if(ratio > 0.5) {
             ctx.fillStyle = 'white';
             ctx.beginPath(); ctx.arc(40, -10, 2, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(20, -25, 1.5, 0, Math.PI*2); ctx.fill();
         }
-
         ctx.restore();
     }
 }
 
-// ✅ 2. ศาลามาร (Sukuna Shrine) - แก้ไม่ให้ผลัก
+// ✅ 2. ศาลามาร + เอฟเฟกต์ฟันใหม่ (แก้แล็ค + สวยขึ้น)
 export class MalevolentShrineObject extends GameObject {
     constructor(x, y, settings) {
         super(x, y);
         this.radius = settings.radius;
-        
-        // ⛔ ตั้ง damage เป็น 0 เพื่อหลอก main.js ไม่ให้คำนวณ Knockback
-        this.damage = 0; 
-        
-        // ✅ เก็บดาเมจจริงไว้ในตัวแปรอื่นแทน
+        this.damage = 0; // ไม่ใช้ระบบชนปกติ
         this.realDamage = settings.damagePerFrame;
-        
         this.life = settings.duration;
         this.maxLife = settings.duration;
         this.slashFreq = settings.slashFrequency;
@@ -123,26 +87,24 @@ export class MalevolentShrineObject extends GameObject {
         this.life--;
         if(this.life <= 0) this.dead = true;
 
+        // ทำดาเมจ (Logic เดิม)
         zombies.forEach(z => {
-            // เช็คระยะเอง และทำดาเมจเองตรงนี้
             if(Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
-                z.hp -= this.realDamage; // ลดเลือดจากตัวแปรใหม่
-                
-                // สั่ง Stun (หยุดเดิน)
-                if (z.applyStun) z.applyStun(5);
-                else z.stunTimer = 5; 
-
-                // Effect เลือด
+                z.hp -= this.realDamage;
+                if (z.applyStun) z.applyStun(5); else z.stunTimer = 5; 
                 if(Math.random() < 0.1) particleList.push(new Particle(z.x, z.y, '#dc2626', 2));
             }
         });
 
-        // สร้าง Visual Slash (รอยฟัน)
+        // ✅ เสกเอฟเฟกต์ฟัน (Cleave) - สุ่มเกิดทั่ววง
         if (Math.random() < this.slashFreq) {
+            // สุ่มตำแหน่งในวง
             const angle = Math.random() * Math.PI * 2;
-            const safeRadius = Math.max(0, this.radius - 40); 
-            const dist = Math.random() * safeRadius;
-            this.visualSlashes.push(new SlashVisual(this.x + Math.cos(angle)*dist, this.y + Math.sin(angle)*dist));
+            const r = Math.random() * (this.radius - 20);
+            const sx = this.x + Math.cos(angle) * r;
+            const sy = this.y + Math.sin(angle) * r;
+            
+            this.visualSlashes.push(new SlashVisual(sx, sy));
         }
         
         this.visualSlashes.forEach(s => s.update());
@@ -153,21 +115,114 @@ export class MalevolentShrineObject extends GameObject {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // พื้นหลังอาณาเขต
+        // 1. วาดพื้นหลังอาณาเขต (น้ำแดงๆ)
         ctx.beginPath(); ctx.arc(0,0,this.radius,0,Math.PI*2);
-        ctx.fillStyle = 'rgba(20, 0, 0, 0.3)'; ctx.fill();
+        ctx.fillStyle = 'rgba(20, 0, 0, 0.2)'; ctx.fill();
         
         // ขอบเขต
         const alpha = Math.min(1, this.life / 60); 
         ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`; ctx.lineWidth = 3; 
-        ctx.shadowBlur = 30; ctx.shadowColor = 'red'; ctx.stroke();
-        
-        // วาดรอยฟัน (ตัดขอบไม่ให้เกินวง)
+        ctx.shadowBlur = 20; ctx.shadowColor = 'red'; ctx.stroke();
+
+        // ✅ 2. วาด "ศาลามาร" (Shrine) ตรงกลาง
+        this.drawShrine(ctx, alpha);
+
+        // 3. วาดเอฟเฟกต์ฟัน (ตัดขอบวง)
         ctx.save();
         ctx.beginPath(); ctx.arc(0,0,this.radius,0,Math.PI*2); ctx.clip();
-        ctx.globalCompositeOperation = 'lighter';
+        // ไม่ต้องใช้ globalCompositeOperation 'lighter' ตลอดเวลา จะได้ไม่แสบตาและลดภาระ
         this.visualSlashes.forEach(s => s.draw(ctx)); 
         ctx.restore();
+        
+        ctx.restore();
+    }
+
+    // ฟังก์ชันวาดศาลา (วาดด้วยโค้ดล้วนๆ ไม่ต้องโหลดรูป)
+    drawShrine(ctx, alpha) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.shadowBlur = 20; ctx.shadowColor = 'black';
+
+        // ฐานศาลา
+        ctx.fillStyle = '#1a0505'; // ดำแดง
+        ctx.fillRect(-60, -20, 120, 40); // ฐานล่าง
+        
+        // เสา
+        ctx.fillStyle = '#8B0000'; // แดงเลือดหมู
+        ctx.fillRect(-50, -80, 15, 60); // เสาซ้าย
+        ctx.fillRect(35, -80, 15, 60);  // เสาขวา
+        ctx.fillRect(-10, -80, 20, 60); // เสากลาง
+
+        // หลังคา (Pagoda Style)
+        ctx.fillStyle = '#2d0a0a';
+        ctx.beginPath();
+        ctx.moveTo(-90, -80);
+        ctx.quadraticCurveTo(0, -140, 90, -80); // โค้งหลังคา
+        ctx.lineTo(70, -60);
+        ctx.quadraticCurveTo(0, -110, -70, -60);
+        ctx.fill();
+
+        // เขา/เขี้ยว ปีศาจ
+        ctx.fillStyle = '#ddd';
+        ctx.beginPath(); ctx.moveTo(-60, -20); ctx.lineTo(-70, -50); ctx.lineTo(-50, -20); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(60, -20); ctx.lineTo(70, -50); ctx.lineTo(50, -20); ctx.fill();
+
+        // ปากปีศาจตรงกลาง
+        ctx.fillStyle = 'black';
+        ctx.beginPath(); ctx.arc(0, -50, 15, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'red';
+        ctx.font = '20px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('⚡', 0, -45); // สัญลักษณ์กลางศาลา
+
+        ctx.restore();
+    }
+}
+
+// ✅ 3. ปรับ SlashVisual ให้เป็นเส้นเฉือนคมๆ (Cleave)
+export class SlashVisual extends GameObject {
+    constructor(x, y) {
+        super(x, y);
+        this.angle = Math.random() * Math.PI * 2; // สุ่มทิศทางฟัน
+        this.life = 15; // อยู่นานขึ้นนิดนึง
+        this.maxLife = 15;
+        this.length = 80 + Math.random() * 60; // ยาวขึ้น
+        this.width = 2 + Math.random() * 3;
+    }
+    update() { 
+        this.life--; 
+        if (this.life <= 0) this.dead = true; 
+    }
+    draw(ctx) {
+        ctx.save(); 
+        ctx.translate(this.x, this.y); 
+        ctx.rotate(this.angle);
+        
+        const r = this.life / this.maxLife;
+        
+        // เส้นฟัน (Cleave) - วาดเส้นเดียวคมๆ
+        ctx.globalCompositeOperation = 'lighter';
+        
+        // แกนกลางสีขาว
+        ctx.beginPath();
+        ctx.moveTo(-this.length/2, 0); 
+        ctx.lineTo(this.length/2, 0);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${r})`;
+        ctx.lineWidth = this.width;
+        ctx.lineCap = 'butt'; // ปลายตัดคมๆ
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = 'white';
+        ctx.stroke();
+
+        // ขอบสีแดง (Dismantle)
+        ctx.beginPath();
+        // เส้นขอบจะกว้างกว่าและจางกว่า
+        ctx.moveTo(-this.length/2 * 1.2, 0); 
+        ctx.lineTo(this.length/2 * 1.2, 0);
+        ctx.strokeStyle = `rgba(255, 0, 0, ${r * 0.6})`; // สีแดงจางๆ
+        ctx.lineWidth = this.width * 3;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'red';
+        ctx.stroke();
         
         ctx.restore();
     }
@@ -292,10 +347,4 @@ export class PlayfulCloudSpin extends GameObject {
     constructor(x, y, owner) { super(x, y); this.owner = owner; this.life = 30; this.angle = 0; }
     update(zombies, particleList) { this.x = this.owner.x; this.y = this.owner.y; this.angle += 0.5; this.life--; if(this.life<=0) this.dead=true; zombies.forEach(z => { if(Math.hypot(this.x - z.x, this.y - z.y) < 130) { z.hp -= 20; const ang = Math.atan2(z.y - this.y, z.x - this.x); z.x += Math.cos(ang) * 15; z.y += Math.sin(ang) * 15; } }); }
     draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = '#b91c1c'; for(let i=0; i<3; i++) { ctx.rotate(Math.PI*2/3); ctx.beginPath(); ctx.arc(80, 0, 15, 0, Math.PI*2); ctx.fill(); ctx.fillRect(0, -5, 80, 10); } ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0,0, 120, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }
-}
-
-export class SlashVisual extends GameObject {
-    constructor(x, y) { super(x, y); this.angle = Math.random() * Math.PI * 2; this.length = 50 + Math.random() * 50; this.life = 10; this.maxLife = 10; this.width = 2 + Math.random() * 3; }
-    update() { this.life--; if (this.life <= 0) this.dead = true; }
-    draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); const ratio = this.life / this.maxLife; ctx.globalCompositeOperation = 'lighter'; ctx.beginPath(); ctx.moveTo(-this.length/2, 0); ctx.lineTo(this.length/2, 0); ctx.strokeStyle = `rgba(255, 255, 255, ${ratio})`; ctx.lineWidth = this.width; ctx.lineCap = 'round'; ctx.shadowBlur = 10; ctx.shadowColor = 'red'; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-this.length/2 * ratio, 0); ctx.lineTo(this.length/2 * ratio, 0); ctx.strokeStyle = `rgba(255, 0, 0, ${ratio * 0.8})`; ctx.lineWidth = this.width * 2; ctx.stroke(); ctx.restore(); }
 }

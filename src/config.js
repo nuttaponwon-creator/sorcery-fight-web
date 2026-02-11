@@ -1,3 +1,5 @@
+// src/config.js
+
 export const CONFIG = {
     WORLD_WIDTH: 3000,
     WORLD_HEIGHT: 3000,
@@ -16,40 +18,28 @@ export const SKILL_SETTINGS = {
         slash: { damage: 10 },
         fireArrow: { damage: 80, explosionRadius: 500 },
         worldSlash: { 
-            damage: 300,     // ดาเมจแรงๆ
-            radius: 100,     // ความกว้างของคลื่นดาบ (จากปีกบนถึงปีกล่าง)
-            speed: 30,       // ความเร็วในการพุ่ง
-            lifespan: 50     // ระยะทางที่พุ่งไปได้ (ยิ่งเยอะยิ่งไกล)
+            damage: 300,
+            radius: 100,
+            speed: 30,
+            lifespan: 50
         },
         shrine: { 
             damagePerFrame: 0.8, 
             radius: 450, 
-            duration: 600, // 10 วินาที
-            slashFrequency: 1 
+            duration: 600, 
+            slashFrequency: 0.3 // ✅ ลดลงจาก 1 เพื่อแก้แล็ค (แต่เดี๋ยวไปเพิ่มเอฟเฟกต์ให้ดูเยอะเอง)
         }
     },
     toji: {
-        spear: { damage: 40, range: 150 },         // Q: หอกพลิกฟ้า (แทงทะลุ)
-        chain: { damage: 25, range: 400 },         // E: โซ่หมื่นลี้ (ฟาดไกล)
-        playfulCloud: { damage: 60, radius: 120 }, // R: อิยูอุน (ฟาดรอบตัว)
-        heavenly: { duration: 600, speedBuff: 2.0 } // Space: กายาสวรรค์ (วิ่งเร็วจัด)
+        spear: { damage: 40, range: 150 },
+        chain: { damage: 25, range: 400 },
+        playfulCloud: { damage: 60, radius: 120 },
+        heavenly: { duration: 600, speedBuff: 2.0 }
     }
 };
 
 export const CHAR_DATA = {
-    gojo: {
-        name: "Gojo", color: '#3b82f6', hp: 150, speed: 6,
-        cd: { q: 120, e: 300, r: 300, space: 900 }
-    },
-    sukuna: {
-        name: "Sukuna", color: '#dc2626', hp: 180, speed: 5.5,
-        cd: { q: 100, e: 400, r: 600, space: 900 }
-    },
-    toji: { 
-        name: "Toji", 
-        color: '#10b981', // สีเขียวมรกต/ดำ
-        hp: 250,          // อึดมาก
-        speed: 8,         // เร็วสุดในเกม
-        cd: { q: 80, e: 180, r: 300, space: 1200 } // คูลดาวน์ไว เพราะเน้นกายภาพ
-    }
+    gojo: { name: "Gojo", color: '#3b82f6', hp: 150, speed: 6, cd: { q: 120, e: 300, r: 300, space: 900 } },
+    sukuna: { name: "Sukuna", color: '#dc2626', hp: 180, speed: 5.5, cd: { q: 100, e: 400, r: 600, space: 900 } },
+    toji: { name: "Toji", color: '#10b981', hp: 250, speed: 8, cd: { q: 80, e: 180, r: 300, space: 1200 } }
 };
