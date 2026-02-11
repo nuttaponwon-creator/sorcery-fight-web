@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JJK Survival: Domain Expansion</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="ui-layer">
+
+        <div class="hud-panel">
+            <div class="score-box">
+                <div class="score-label">CURSE POINTS</div>
+                <div id="score-display">0</div>
+            </div>
+
+            <div class="hp-wrapper">
+                <div class="hp-label">VITALITY STATUS</div>
+                <div class="hp-container">
+                    <div id="health-bar" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="skills-hud" class="hidden">
+            <div class="skill-slot">
+                <span class="skill-key">Q</span>
+                <span id="icon-q" class="text-2xl">⚡</span>
+                <div id="cd-q" class="skill-overlay" style="height: 0%"></div>
+            </div>
+            <div class="skill-slot">
+                <span class="skill-key">E</span>
+                <span id="icon-e" class="text-2xl">🔵</span>
+                <div id="cd-e" class="skill-overlay" style="height: 0%"></div>
+            </div>
+            <div class="skill-slot">
+                <span class="skill-key">R</span>
+                <span id="icon-r" class="text-2xl">🔴</span>
+                <div id="cd-r" class="skill-overlay" style="height: 0%"></div>
+            </div>
+            <div class="skill-slot ult">
+                <span class="skill-key">SPC</span>
+                <span id="icon-space" class="text-2xl">🟣</span>
+                <div id="cd-space" class="skill-overlay" style="height: 0%"></div>
+            </div>
+        </div>
+
+        <div id="menu-screen" class="interactive">
+            <h1>JUJUTSU <span style="color:#a855f7">SURVIVAL</span></h1>
+            <p class="text-gray-400 mb-8 tracking-widest">CHOOSE YOUR SORCERER</p>
+
+            <div class="flex flex-col md:flex-row gap-6 justify-center mb-10">
+                <div id="card-gojo" class="character-card selected" onclick="selectChar('gojo')">
+                    <div class="text-6xl mb-4">👁️</div>
+                    <h2 class="text-3xl font-bold text-white mb-2">GOJO SATORU</h2>
+                    <p class="text-blue-400 text-sm tracking-wider">THE STRONGEST</p>
+                    <div class="mt-4 text-left text-xs text-gray-400 space-y-1">
+                        <p>• Ranged / Speed</p>
+                        <p>• Hollow Purple (Nuke)</p>
+                    </div>
+                </div>
+                <div id="card-toji" class="character-card" onclick="selectChar('toji')">
+                    <div class="text-6xl mb-4">🗡️</div>
+                    <h2 class="text-3xl font-bold text-white mb-2">TOJI</h2>
+                    <p class="text-green-500 text-sm tracking-wider">SORCERER KILLER</p>
+                    <div class="mt-4 text-left text-xs text-gray-400 space-y-1">
+                        <p>• Melee / Speedster</p>
+                        <p>• Heavenly Restriction (Buff)</p>
+                    </div>
+                </div>
+                <div id="card-sukuna" class="character-card" onclick="selectChar('sukuna')">
+                    <div class="text-6xl mb-4">👹</div>
+                    <h2 class="text-3xl font-bold text-white mb-2">RYOMEN SUKUNA</h2>
+                    <p class="text-red-500 text-sm tracking-wider">KING OF CURSES</p>
+                    <div class="mt-4 text-left text-xs text-gray-400 space-y-1">
+                        <p>• Melee / Area</p>
+                        <p>• Malevolent Shrine (DOT)</p>
+                    </div>
+                </div>
+            </div>
+
+            <button id="start-btn" class="interactive">
+                DOMAIN EXPANSION (START)
+            </button>
+        </div>
+
+        <div id="joystick-zone">
+            <div id="joystick-knob"></div>
+        </div>
+        <div id="btn-punch" class="mobile-btn">👊</div>
+        <div id="btn-q" class="mobile-btn">Q</div>
+        <div id="btn-e" class="mobile-btn">E</div>
+        <div id="btn-r" class="mobile-btn">R</div>
+        <div id="btn-space" class="mobile-btn">🟣</div>
+
+        <div class="desktop-hint absolute bottom-5 left-1/2 -translate-x-1/2 text-white/30 text-xs pointer-events-none">
+            [WASD] Move • [Click] Attack • [Q/E/R] Skills • [Space] Ultimate
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // Global helper for Menu selection
+        window.selectedCharType = 'gojo';
+        window.selectChar = (type) => {
+            window.selectedCharType = type;
+            document.getElementById('card-gojo').classList.toggle('selected', type === 'gojo');
+            document.getElementById('card-sukuna').classList.toggle('selected', type === 'sukuna');
+            document.getElementById('card-toji').classList.toggle('selected', type === 'toji'); // ✅ เพิ่มบรรทัดนี้
+        };
+    </script>
+
+    <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>

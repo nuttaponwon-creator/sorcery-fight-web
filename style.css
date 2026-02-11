@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;600&display=swap');
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #050505;
+    background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
+    font-family: 'Teko', sans-serif;
+    color: white;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+canvas { display: block; }
+
+#ui-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.interactive { pointer-events: auto; cursor: pointer; }
+
+/* --- HUD PANEL --- */
+.hud-panel {
+    position: absolute;
+    top: 0; left: 0; width: 100%;
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+}
+
+.score-box {
+    text-shadow: 0 0 15px rgba(168, 85, 247, 0.6);
+}
+.score-label {
+    font-size: 18px; color: #a855f7; letter-spacing: 2px; font-weight: bold;
+}
+#score-display {
+    font-size: 48px; font-weight: bold; line-height: 1;
+}
+
+.hp-wrapper {
+    display: flex; flex-direction: column; align-items: flex-end;
+}
+.hp-label {
+    font-size: 18px; color: #ef4444; letter-spacing: 2px; font-weight: bold; margin-bottom: 5px;
+}
+.hp-container {
+    width: 400px;
+    height: 25px;
+    background: rgba(30, 30, 30, 0.8);
+    border: 1px solid #555;
+    transform: skewX(-20deg); /* เอียงกล่อง */
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+#health-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7f1d1d, #ef4444);
+    box-shadow: 0 0 20px #ef4444;
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+#health-bar::after {
+    content: '';
+    position: absolute; top: 0; left: 0; bottom: 0; width: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transform: skewX(-20deg) translateX(-150%);
+    animation: shine 2.5s infinite;
+}
+@keyframes shine { 100% { transform: skewX(-20deg) translateX(150%); } }
+
+/* --- SKILLS BAR --- */
+#skills-hud {
+    position: absolute;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 15px;
+    padding: 15px 30px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+}
+
+.skill-slot {
+    width: 70px; height: 70px;
+    background: rgba(20, 20, 20, 0.9);
+    border: 2px solid #444;
+    border-radius: 8px;
+    position: relative;
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: transform 0.1s;
+    overflow: hidden;
+}
+.skill-slot:not(.ult) { border-bottom: 4px solid #3b82f6; } /* สีธีมปกติ */
+.skill-slot.ult { 
+    width: 85px; height: 85px; 
+    border-color: #a855f7; 
+    margin-top: -15px;
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+.skill-key {
+    position: absolute; top: 2px; left: 4px;
+    font-size: 14px; color: #aaa; font-weight: bold; font-family: sans-serif;
+}
+.skill-overlay {
+    position: absolute; bottom: 0; left: 0; width: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    transition: height 0.1s linear;
+}
+
+/* --- MENU SCREEN --- */
+#menu-screen {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 10, 10, 0.95);
+    border: 1px solid #333;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8);
+    padding: 50px;
+    text-align: center;
+    width: 90%; max-width: 1000px;
+    border-radius: 4px;
+    z-index: 100 !important; /* ชั้นบนสุด */
+    pointer-events: auto !important; /* รับการคลิกแน่นอน */
+}
+
+h1 {
+    font-size: 90px; line-height: 0.8; margin-bottom: 10px;
+    background: linear-gradient(to right, #fff, #a855f7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+}
+
+.character-card {
+    width: 280px; padding: 30px;
+    background: #151515;
+    border: 1px solid #333;
+    transition: all 0.3s;
+    position: relative;
+    cursor: pointer;
+}
+.character-card:hover, .character-card.selected {
+    background: #1f1f1f;
+    border-color: #fff;
+    transform: translateY(-10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.character-card.selected::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+    background: #a855f7;
+}
+
+#start-btn {
+    background: white; color: black;
+    font-family: 'Teko', sans-serif;
+    font-size: 32px; font-weight: bold;
+    padding: 10px 80px;
+    border: none;
+    transform: skewX(-10deg);
+    transition: all 0.2s;
+    margin-top: 20px;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    z-index: 101 !important;
+}
+#start-btn:hover {
+    background: #a855f7; color: white;
+    box-shadow: 0 0 30px #a855f7;
+    transform: skewX(-10deg) scale(1.05);
+}
+
+/* --- MOBILE --- */
+#joystick-zone { 
+    position: absolute; bottom: 40px; left: 40px; 
+    width: 140px; height: 140px; 
+    background: rgba(255, 255, 255, 0.05); 
+    border: 2px solid rgba(255, 255, 255, 0.1); 
+    border-radius: 50%; 
+    pointer-events: auto; display: none; 
+}
+#joystick-knob { 
+    position: absolute; top: 50%; left: 50%; 
+    width: 60px; height: 60px; 
+    background: rgba(255, 255, 255, 0.3); 
+    border-radius: 50%; 
+    transform: translate(-50%, -50%); 
+    pointer-events: none; 
+}
+.mobile-btn { 
+    position: absolute; border-radius: 50%; 
+    pointer-events: auto; display: none; 
+    align-items: center; justify-content: center; 
+    color: white; font-weight: bold; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+    font-size: 18px; border: 2px solid rgba(255,255,255,0.2); 
+}
+.mobile-btn:active { transform: scale(0.95); opacity: 0.8; }
+
+#btn-punch { bottom: 40px; right: 30px; width: 80px; height: 80px; background: #ef4444; font-size: 24px; } 
+#btn-q { bottom: 140px; right: 40px; width: 60px; height: 60px; background: #3b82f6; }
+#btn-e { bottom: 190px; right: 110px; width: 60px; height: 60px; background: #3b82f6; }
+#btn-r { bottom: 130px; right: 180px; width: 60px; height: 60px; background: #3b82f6; }
+#btn-space { bottom: 30px; right: 140px; width: 70px; height: 70px; background: #a855f7; border: 2px solid #fff; font-size: 24px; }
+
+@media (hover: none) and (pointer: coarse) {
+    #joystick-zone, .mobile-btn { display: flex; }
+    .desktop-hint { display: none; }
+}
