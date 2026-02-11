@@ -177,57 +177,59 @@ export class MalevolentShrineObject extends GameObject {
         ctx.restore();
     }
 }
-
-// ✅ 3. ปรับ SlashVisual ให้เป็นเส้นเฉือนคมๆ (Cleave)
 export class SlashVisual extends GameObject {
     constructor(x, y) {
         super(x, y);
-        this.angle = Math.random() * Math.PI * 2; // สุ่มทิศทางฟัน
-        this.life = 15; // อยู่นานขึ้นนิดนึง
-        this.maxLife = 15;
-        this.length = 80 + Math.random() * 60; // ยาวขึ้น
-        this.width = 2 + Math.random() * 3;
+        this.angle = Math.random() * Math.PI * 2;
+        this.length = 80 + Math.random() * 50; 
+        this.width = 6 + Math.random() * 4; 
+        this.life = 12; 
+        this.maxLife = 12;
+        this.isCross = Math.random() < 0.4;
+        this.curve = 10 + Math.random() * 20;
     }
-    update() { 
-        this.life--; 
-        if (this.life <= 0) this.dead = true; 
+
+    update() {
+        this.life--;
+        if (this.life <= 0) this.dead = true;
     }
+
     draw(ctx) {
-        ctx.save(); 
-        ctx.translate(this.x, this.y); 
+        ctx.save();
+        ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
         
         const r = this.life / this.maxLife;
         
-        // เส้นฟัน (Cleave) - วาดเส้นเดียวคมๆ
         ctx.globalCompositeOperation = 'lighter';
-        
-        // แกนกลางสีขาว
-        ctx.beginPath();
-        ctx.moveTo(-this.length/2, 0); 
-        ctx.lineTo(this.length/2, 0);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${r})`;
-        ctx.lineWidth = this.width;
-        ctx.lineCap = 'butt'; // ปลายตัดคมๆ
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = 'white';
-        ctx.stroke();
-
-        // ขอบสีแดง (Dismantle)
-        ctx.beginPath();
-        // เส้นขอบจะกว้างกว่าและจางกว่า
-        ctx.moveTo(-this.length/2 * 1.2, 0); 
-        ctx.lineTo(this.length/2 * 1.2, 0);
-        ctx.strokeStyle = `rgba(255, 0, 0, ${r * 0.6})`; // สีแดงจางๆ
-        ctx.lineWidth = this.width * 3;
         ctx.shadowBlur = 10;
-        ctx.shadowColor = 'red';
-        ctx.stroke();
-        
+        ctx.shadowColor = '#ef4444'; 
+
+        const drawSlash = (len, w, curv, rot) => {
+            ctx.save();
+            ctx.rotate(rot);
+            ctx.beginPath();
+            ctx.moveTo(-len / 2, 0);
+            ctx.quadraticCurveTo(0, -w - curv, len / 2, 0); // โค้งบน
+            ctx.quadraticCurveTo(0, -curv, -len / 2, 0);    // โค้งล่าง
+            ctx.fillStyle = `rgba(255, 255, 255, ${r})`;
+            ctx.fill();
+            
+            // ขอบแดง
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = `rgba(255, 0, 0, ${r * 0.8})`;
+            ctx.stroke();
+            ctx.restore();
+        };
+
+        drawSlash(this.length, this.width, this.curve, 0);
+        if (this.isCross) {
+            drawSlash(this.length * 0.8, this.width * 0.7, this.curve, (Math.PI / 2) + (Math.random() - 0.5)); 
+        }
+
         ctx.restore();
     }
 }
-
 export class PunchBox extends GameObject {
     constructor(x, y, angle, owner, damage = 20) {
         super(x, y); this.angle = angle; this.owner = owner; this.damage = damage;
@@ -332,9 +334,83 @@ export class WorldSlash extends GameObject {
 }
 
 export class InvertedSpear extends GameObject {
-    constructor(x, y, angle) { super(x, y); this.angle = angle; this.life = 15; this.speed = 25; this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed; this.damage = 40; }
-    update(zombies, particleList) { this.x += this.vx; this.y += this.vy; this.life--; if(this.life<=0) this.dead=true; zombies.forEach(z => { if(Math.hypot(this.x - z.x, this.y - z.y) < 40) { z.hp -= this.damage; particleList.push(new Particle(z.x, z.y, '#10b981', 3, 5)); } }); }
-    draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = '#d1fae5'; ctx.beginPath(); ctx.moveTo(40,0); ctx.lineTo(-10,10); ctx.lineTo(-10,-10); ctx.fill(); ctx.strokeStyle = '#059669'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-10,0); ctx.lineTo(-30,0); ctx.stroke(); ctx.restore(); }
+    constructor(x, y, angle) {
+        super(x, y);
+        this.angle = angle;
+        this.life = 20; // อยู่นานขึ้นนิดนึงให้เห็นชัด
+        this.speed = 28;
+        this.vx = Math.cos(angle) * this.speed;
+        this.vy = Math.sin(angle) * this.speed;
+        this.damage = 45; 
+    }
+
+    update(zombies, particleList) {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+        if(this.life <= 0) this.dead = true;
+        
+        zombies.forEach(z => {
+            if(Math.hypot(this.x - z.x, this.y - z.y) < 40) {
+                z.hp -= this.damage;
+                // Effect เลือดเขียว (เหมือนลบล้างพลัง)
+                particleList.push(new Particle(z.x, z.y, '#10b981', 3, 5));
+                particleList.push(new Particle(z.x, z.y, 'white', 2, 8)); // ประกายแสง
+            }
+        });
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        // --- วาดหอกพลิกฟ้า (ตามรูป) ---
+        
+        // 1. ด้ามจับ (สีดำพันผ้า)
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(-30, -3, 30, 6);
+        // ลวดลายพันด้าม (สีเทาจางๆ)
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i=-28; i<0; i+=4) { ctx.moveTo(i, -3); ctx.lineTo(i+2, 3); }
+        ctx.stroke();
+
+        // 2. ตัวกั้น (Guard) - วงกลม
+        ctx.fillStyle = '#d4d4d4'; // สีเงิน
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 3. ใบมีด (Blade) - รูปทรงเฉพาะ
+        ctx.fillStyle = '#e5e5e5'; // สีเงินสว่าง
+        ctx.beginPath();
+        ctx.moveTo(4, -3);  // เริ่มจากตัวกั้น (บน)
+        
+        // --- ส่วนแง่ง (Prong) ที่ยื่นออกมา ---
+        ctx.lineTo(12, -3); 
+        ctx.quadraticCurveTo(12, -18, 25, -12); // โค้งขึ้นไปเป็นแง่ง
+        ctx.quadraticCurveTo(20, -8, 25, -4);   // โค้งกลับลงมา
+        
+        // --- ใบมีดหลัก ---
+        ctx.lineTo(50, 0);  // ปลายแหลมสุด
+        ctx.lineTo(25, 5);  // ท้องใบมีด (ล่าง)
+        ctx.lineTo(4, 4);   // กลับมาตัวกั้น
+        ctx.fill();
+        
+        // เส้นขอบใบมีดให้ดูคม
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // 4. พู่สีทองท้ายด้าม (ตาม Ref)
+        ctx.fillStyle = '#fcd34d';
+        ctx.beginPath(); ctx.arc(-32, 0, 3, 0, Math.PI*2); ctx.fill();
+
+        ctx.restore();
+    }
 }
 
 export class ChainWhip extends GameObject {
@@ -348,3 +424,5 @@ export class PlayfulCloudSpin extends GameObject {
     update(zombies, particleList) { this.x = this.owner.x; this.y = this.owner.y; this.angle += 0.5; this.life--; if(this.life<=0) this.dead=true; zombies.forEach(z => { if(Math.hypot(this.x - z.x, this.y - z.y) < 130) { z.hp -= 20; const ang = Math.atan2(z.y - this.y, z.x - this.x); z.x += Math.cos(ang) * 15; z.y += Math.sin(ang) * 15; } }); }
     draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = '#b91c1c'; for(let i=0; i<3; i++) { ctx.rotate(Math.PI*2/3); ctx.beginPath(); ctx.arc(80, 0, 15, 0, Math.PI*2); ctx.fill(); ctx.fillRect(0, -5, 80, 10); } ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0,0, 120, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }
 }
+
+
