@@ -211,5 +211,7 @@ function getLeaderboard(room) {
     return players.slice(0, 10);
 }
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const PORT = process.env.PORT || 4000;
+server.listen(4000, () => {
+    console.log('Server is running on port 4000');
+});

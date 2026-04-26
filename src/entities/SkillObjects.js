@@ -36,8 +36,18 @@ export class InfiniteVoid extends GameObject {
 }
 
 export class PunchBox extends GameObject {
-    constructor(x, y, angle, damage) { super(x, y); this.angle = angle; this.damage = damage; this.life = 5; }
-    update() { this.life--; if (this.life <= 0) this.dead = true; }
+    constructor(x, y, angle, damage) { super(x, y); this.angle = angle; this.damage = damage; this.life = 5; this.hitZombies = new Set(); }
+    update(zombies, particleList, networking = null) {
+        this.life--; if (this.life <= 0) this.dead = true;
+        zombies.forEach(z => {
+            if (!this.hitZombies.has(z.id) && Math.hypot(this.x - z.x, this.y - z.y) < 40) {
+                this.hitZombies.add(z.id);
+                z.hp -= this.damage;
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                for(let k=0; k<2; k++) particleList.push(new Particle(z.x, z.y, 'white', 2, 5));
+            }
+        });
+    }
     draw(ctx) {} // Invisible
 }
 
@@ -125,7 +135,7 @@ export class HollowPurple extends GameObject {
 // --- SUKUNA SKILLS ---
 export class CleaveSlash extends GameObject {
     constructor(x, y, angle, settings = { damage: 15, range: 200 }) {
-        super(x, y); this.angle = angle; this.damage = settings.damage; this.range = settings.range; this.life = 8;
+        super(x, y); this.angle = angle; this.damage = settings.damage; this.range = settings.range; this.life = 8; this.hitZombies = new Set();
     }
     update(zombies, particleList, networking = null) {
         this.life--; if(this.life <= 0) this.dead = true;
@@ -134,7 +144,8 @@ export class CleaveSlash extends GameObject {
         zombies.forEach(z => {
             const dist = Math.hypot(z.x - this.x, z.y - this.y);
             const angToZ = Math.atan2(z.y - this.y, z.x - this.x);
-            if (dist < this.range && Math.abs(angToZ - this.angle) < 0.4) {
+            if (!this.hitZombies.has(z.id) && dist < this.range && Math.abs(angToZ - this.angle) < 0.4) {
+                this.hitZombies.add(z.id);
                 z.hp -= this.damage;
                 if (networking) networking.sendZombieHit(z.id, this.damage);
                 particleList.push(new Particle(z.x, z.y, 'red', 2));
@@ -260,11 +271,13 @@ export class KatanaSlash extends GameObject {
         this.x += Math.cos(sideAngle) * offsetDist; this.y += Math.sin(sideAngle) * offsetDist;
         this.x += Math.cos(angle) * 40; this.y += Math.sin(angle) * 40;
         this.slashTilt = (Math.PI / 4) * offsetSide * -1; 
+        this.hitZombies = new Set();
     }
     update(zombies, particleList, networking = null) { 
         this.life--; if(this.life <= 0) this.dead = true; 
         zombies.forEach(z => {
-            if (Math.hypot(this.x - z.x, this.y - z.y) < 60) {
+            if (!this.hitZombies.has(z.id) && Math.hypot(this.x - z.x, this.y - z.y) < 60) {
+                this.hitZombies.add(z.id);
                 if (networking) networking.sendZombieHit(z.id, this.damage);
                 z.hp -= this.damage;
                 for(let k=0; k<3; k++) particleList.push(new Particle(z.x, z.y, 'black', 2, 4));
@@ -344,13 +357,14 @@ export class CursedSpeech extends GameObject {
 }
 
 export class RikaClaw extends GameObject {
-    constructor(x, y, angle, settings) { super(x, y); this.angle = angle; this.damage = settings.damage; this.life = 20; this.range = settings.range; }
+    constructor(x, y, angle, settings) { super(x, y); this.angle = angle; this.damage = settings.damage; this.life = 20; this.range = settings.range; this.hitZombies = new Set(); }
     update(zombies, particleList, networking = null) {
         this.life--; if(this.life <= 0) this.dead = true;
         zombies.forEach(z => {
             const dist = Math.hypot(z.x - this.x, z.y - this.y);
             const angToZ = Math.atan2(z.y - this.y, z.x - this.x);
-            if(dist < this.range && Math.abs(angToZ - this.angle) < 0.8) {
+            if(!this.hitZombies.has(z.id) && dist < this.range && Math.abs(angToZ - this.angle) < 0.8) {
+                this.hitZombies.add(z.id);
                 z.hp -= this.damage; if (networking) networking.sendZombieHit(z.id, this.damage);
                 for(let k=0; k<2; k++) particleList.push(new Particle(z.x, z.y, '#500', 3));
             }

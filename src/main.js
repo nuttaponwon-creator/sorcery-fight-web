@@ -278,7 +278,7 @@ function animate() {
         }
 
         const syncData = [];
-        gameState.zombies.forEach((z, i) => {
+        gameState.zombies.forEach((z) => {
             const allPlayers = [gameState.player, ...Object.values(networking.remotePlayers).filter(rp => !rp.isDead)];
             let closest = null, minDist = Infinity;
             allPlayers.forEach(p => {
@@ -299,13 +299,9 @@ function animate() {
 
             if (z.dead) {
                 networking.sendZombieDeath(z.id);
-                
                 // Spawn Drop (20% chance)
-                if (Math.random() < 0.2) {
-                    gameState.drops.push(new DropItem(z.x, z.y));
-                }
+                if (Math.random() < 0.2) gameState.drops.push(new DropItem(z.x, z.y));
 
-                gameState.zombies.splice(i, 1);
                 gameState.score += 10;
                 gameState.killedInWave++;
                 
@@ -319,22 +315,22 @@ function animate() {
                 syncData.push({ id: z.id, x: z.x, y: z.y, hp: z.hp });
             }
         });
+        
+        // CLEANUP ARRAYS (Bug Fix: Do not splice during forEach)
+        gameState.zombies = gameState.zombies.filter(z => !z.dead);
         networking.sendZombieUpdate(syncData);
     }
 
-    gameState.projectiles.forEach((proj, i) => {
-        // PASS networking ONLY if it is our local projectile
+    gameState.projectiles.forEach((proj) => {
         proj.update(gameState.zombies, gameState.particles, proj.isLocal ? networking : null);
-        if (proj.dead) gameState.projectiles.splice(i, 1);
     });
-    gameState.particles.forEach((pt, i) => {
-        pt.update();
-        if (pt.dead) gameState.particles.splice(i, 1);
-    });
-    gameState.drops.forEach((drop, i) => {
-        drop.update(gameState.player);
-        if (drop.dead) gameState.drops.splice(i, 1);
-    });
+    gameState.projectiles = gameState.projectiles.filter(p => !p.dead);
+
+    gameState.particles.forEach((pt) => pt.update());
+    gameState.particles = gameState.particles.filter(p => !p.dead);
+
+    gameState.drops.forEach((drop) => drop.update(gameState.player));
+    gameState.drops = gameState.drops.filter(d => !d.dead);
 
     updateUI();
 
@@ -354,6 +350,7 @@ function animate() {
 
 function startSpectating() {
     gameState.isSpectating = true;
+    if (gameState.player) gameState.player.isDead = true;
     spectatorOverlay.classList.remove('hidden');
     networking.sendDeath();
 }

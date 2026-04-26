@@ -18,7 +18,7 @@ export class Networking {
 
         const protocol = window.location.protocol;
         const host = window.location.hostname;
-        const port = host === 'localhost' ? ':3000' : '';
+        const port = host === 'localhost' ? ':4000' : '';
         this.socket = io(`${protocol}//${host}${port}`);
 
         this.socket.on('connect', () => {
