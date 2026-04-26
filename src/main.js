@@ -364,7 +364,9 @@ const initJoin = (roomCode) => {
     const playerName = document.getElementById('player-name').value || 'Sorcerer';
     const charType = window.selectedCharType || 'gojo';
     
-    gameState.player = new Player(charType, 1200, 1200, spawnObject);
+    // ✅ แก้ลำดับเป็น x, y, type
+    gameState.player = new Player(1200, 1200, charType);
+    gameState.player.spawnObjectCallback = spawnObject; 
     gameState.player.name = playerName;
 
     networking.connect({

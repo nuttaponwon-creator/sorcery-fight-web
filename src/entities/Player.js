@@ -25,7 +25,8 @@ import {
 export class Player {
     constructor(x, y, type = 'gojo') {
         this.type = type;
-        this.stats = CHAR_DATA[type];
+        // ป้องกัน Error ถ้าหา Type ไม่เจอ ให้เป็น Gojo
+        this.stats = CHAR_DATA[type] || CHAR_DATA['gojo'];
         this.x = x;
         this.y = y;
         this.radius = CONFIG.PLAYER_RADIUS;
