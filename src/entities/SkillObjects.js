@@ -81,8 +81,8 @@ export class HollowPurple extends GameObject {
 }
 
 // --- SUKUNA SKILLS ---
-export class Cleave extends GameObject {
-    constructor(x, y, angle, settings) {
+export class CleaveSlash extends GameObject {
+    constructor(x, y, angle, settings = { damage: 15, range: 200 }) {
         super(x, y); this.angle = angle; this.damage = settings.damage; this.range = settings.range; this.life = 8;
     }
     update(zombies, particleList, networking = null) {
@@ -207,6 +207,8 @@ export class SlashVisual extends GameObject {
         ctx.fillStyle = `rgba(255, 255, 255, ${r})`; ctx.fill(); ctx.restore();
     }
 }
+
+export class DismantleSlash extends SlashVisual {}
 
 // --- TOJI SKILLS ---
 export class KatanaSlash extends GameObject {
