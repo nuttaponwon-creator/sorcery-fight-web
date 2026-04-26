@@ -5,9 +5,12 @@ import { RemotePlayer } from './entities/RemotePlayer.js';
 import { Zombie } from './entities/Zombie.js';
 import { Particle } from './entities/SkillObjects.js';
 import { Level } from './core/Level.js';
-import { Networking } from './core/Networking.js';
+import { audioManager } from './core/AudioManager.js';
 
 console.log("Game Script Loaded! (Room-Based Multiplayer)");
+
+// Initialize Audio
+audioManager.init('./bgm.mp3');
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -96,9 +99,10 @@ networking.onReadyUpdate = (data) => {
 
 networking.onGameStart = () => {
     console.log("!!! GAME START !!!");
-    menuScreen.classList.add('hidden'); // Hide entire menu overlay
+    menuScreen.classList.add('hidden'); 
     gameState.gameStarted = true;
     gameState.active = true;
+    audioManager.playBGM(); // Start music
 };
 
 networking.onRoomJoined = (code) => {
@@ -163,6 +167,15 @@ function setupGlobalControls() {
         gameState.player.punch();
         networking.sendAction('punch', gameState.player.angle);
     });
+
+    const musicBtn = document.getElementById('music-toggle');
+    if (musicBtn) {
+        musicBtn.onclick = () => {
+            const isMuted = audioManager.toggleMute();
+            musicBtn.innerText = `🎵 MUSIC: ${isMuted ? 'OFF' : 'ON'}`;
+            musicBtn.style.color = isMuted ? '#666' : '#a855f7';
+        };
+    }
 }
 setupGlobalControls();
 

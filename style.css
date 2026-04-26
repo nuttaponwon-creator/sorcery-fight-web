@@ -101,7 +101,37 @@ canvas { display: block; }
     transition: transform 0.1s;
     overflow: hidden;
 }
-.skill-slot:not(.ult) { border-bottom: 4px solid #3b82f6; } /* สีธีมปกติ */
+.skill-slot:not(.ult) { border-bottom: 4px solid #3b82f6; } 
+
+#top-left-ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+}
+
+#music-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    color: #a855f7;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    width: fit-content;
+}
+
+#music-toggle:hover {
+    background: rgba(168, 85, 247, 0.2);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+}
+
 .skill-slot.ult { 
     width: 85px; height: 85px; 
     border-color: #a855f7; 
