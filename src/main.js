@@ -34,6 +34,7 @@ const roomInput = document.getElementById('room-input');
 const joinRoomBtn = document.getElementById('join-room-btn');
 const createRoomBtn = document.getElementById('create-room-btn');
 const roomDisplay = document.getElementById('room-display');
+const leaderList = document.getElementById('leader-list');
 
 const level = new Level();
 const networking = new Networking(null, RemotePlayer, (obj) => spawnObject(obj, false));
