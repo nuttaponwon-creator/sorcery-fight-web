@@ -56,7 +56,7 @@ export class Player {
         if (this.buffs.heavenly > 0) this.buffs.heavenly--;
 
         // Movement
-        const speed = this.stats.speed * (this.buffs.heavenly > 0 ? CHAR_DATA.toji.heavenly.speedBuff : 1);
+        const speed = this.stats.speed * (this.buffs.heavenly > 0 ? SKILL_SETTINGS.toji.heavenly.speedBuff : 1);
         let moveX = 0, moveY = 0;
         if (input.keys['w']) moveY -= 1;
         if (input.keys['s']) moveY += 1;
@@ -176,6 +176,6 @@ export class Player {
         if (this.casting.type === 'purple') this.spawn(new HollowPurple(this.x, this.y, this.angle));
         else if (this.casting.type === 'shrine') this.spawn(new MalevolentShrineObject(this.x, this.y, SKILL_SETTINGS.sukuna.shrine));
         else if (this.casting.type === 'manifest') this.spawn(new ManifestRika(this.x, this.y, SKILL_SETTINGS.yuta.manifest));
-        else if (this.casting.type === 'heavenly') this.buffs.heavenly = CHAR_DATA.toji.heavenly.duration;
+        else if (this.casting.type === 'heavenly') this.buffs.heavenly = SKILL_SETTINGS.toji.heavenly.duration;
     }
 }
