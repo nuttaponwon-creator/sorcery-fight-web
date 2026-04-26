@@ -165,13 +165,22 @@ io.on('connection', (socket) => {
             const roomData = rooms[room];
             const wasHost = socket.id === roomData.hostId;
             delete roomData.players[socket.id];
+            
+            if (wasHost) {
+                const remainingPlayers = Object.keys(roomData.players);
+                if (remainingPlayers.length > 0) {
+                    roomData.hostId = remainingPlayers[0];
+                    io.to(roomData.hostId).emit('setHost', true);
+                    io.to(roomData.hostId).emit('newHost', roomData.hostId);
+                } else {
+                    roomData.hostId = null;
+                }
+            }
+
             io.to(room).emit('playerDisconnected', socket.id);
             io.to(room).emit('leaderboardUpdate', getLeaderboard(room));
             io.to(room).emit('readyUpdate', getReadyStatus(room));
-            if (wasHost) {
-                roomData.hostId = Object.keys(roomData.players)[0] || null;
-                if (roomData.hostId) io.to(roomData.hostId).emit('setHost', true);
-            }
+            
             if (Object.keys(roomData.players).length === 0) delete rooms[room];
         }
         console.log('User disconnected:', socket.id);

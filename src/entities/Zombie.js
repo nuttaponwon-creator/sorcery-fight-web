@@ -14,14 +14,31 @@ export class Zombie {
         
         this.x = 0;
         this.y = 0;
+        this.targetX = 0;
+        this.targetY = 0;
     }
     
     setPosition(x, y) {
         this.x = x;
         this.y = y;
+        this.targetX = x;
+        this.targetY = y;
+    }
+
+    updateRemote(x, y, hp) {
+        this.targetX = x;
+        this.targetY = y;
+        this.hp = hp;
     }
 
     update(player) {
+        // Smoothly interpolate to target position (for clients)
+        if (Math.abs(this.targetX - this.x) > 0.1 || Math.abs(this.targetY - this.y) > 0.1) {
+            this.x += (this.targetX - this.x) * 0.25;
+            this.y += (this.targetY - this.y) * 0.25;
+            return; // If we are interpolating, don't run AI logic here
+        }
+
         if (this.hp <= 0) {
             this.dead = true;
             return;

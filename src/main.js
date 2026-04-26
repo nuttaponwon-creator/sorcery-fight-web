@@ -42,6 +42,8 @@ let gameState = {
     spawnTimer: 0,
     camera: { x: 0, y: 0 },
     player: null,
+    wave: 1,
+    killedInWave: 0,
     zombies: [],
     projectiles: [],
     particles: []
@@ -68,11 +70,12 @@ networking.onRemoteZombieDeath = (id) => {
 
 networking.onRemoteZombieUpdate = (zombieData) => {
     zombieData.forEach(data => {
-        const z = gameState.zombies.find(z => z.id === data.id);
+        let z = gameState.zombies.find(z => z.id === data.id);
         if (z) {
-            z.x = data.x; z.y = data.y; z.hp = data.hp;
+            z.updateRemote(data.x, data.y, data.hp);
         } else {
-            const newZ = new Zombie(null, data.id);
+            const newZ = new Zombie();
+            newZ.id = data.id;
             newZ.setPosition(data.x, data.y);
             newZ.hp = data.hp;
             gameState.zombies.push(newZ);
@@ -183,6 +186,9 @@ setupGlobalControls();
 function updateUI() {
     if (!gameState.player) return;
     scoreDisplay.innerText = gameState.score;
+    const waveDisplay = document.getElementById('wave-display');
+    if (waveDisplay) waveDisplay.innerText = gameState.wave;
+    
     const hpPercent = Math.max(0, (gameState.player.health / gameState.player.maxHealth) * 100);
     healthBar.style.width = `${hpPercent}%`;
 }
@@ -219,12 +225,22 @@ function animate() {
 
     networking.updateRemotePlayers(gameState.camera);
 
-    // --- ZOMBIE SYNC ---
+    // --- ZOMBIE SYNC & WAVE LOGIC ---
     if (networking.isHost && gameState.gameStarted) {
         gameState.spawnTimer++;
-        if (gameState.spawnTimer > CONFIG.SPAWN_RATE) {
+        
+        // Difficulty scaling based on wave
+        const maxZombies = 5 + (gameState.wave * 3);
+        const spawnInterval = Math.max(30, CONFIG.SPAWN_RATE - (gameState.wave * 10));
+
+        if (gameState.spawnTimer > spawnInterval && gameState.zombies.length < maxZombies) {
             const spawnPoint = level.getRandomSpawnPoint();
             const z = new Zombie(gameState.player);
+            
+            // Scaled health and speed
+            z.hp = 100 + (gameState.wave - 1) * 25;
+            z.speed = 1.5 + (gameState.wave * 0.1);
+            
             z.setPosition(spawnPoint.x, spawnPoint.y);
             gameState.zombies.push(z);
             networking.sendZombieSpawn({ id: z.id, x: z.x, y: z.y, speed: z.speed });
@@ -241,6 +257,7 @@ function animate() {
                 if (d < minDist) { minDist = d; closest = p; }
             });
             z.update(closest || gameState.player);
+            
             allPlayers.forEach(p => {
                 if (p && !p.isDead && Math.hypot(z.x - p.x, z.y - p.y) < z.radius + p.radius) {
                     if (p === gameState.player) {
@@ -249,10 +266,19 @@ function animate() {
                     }
                 }
             });
+
             if (z.dead) {
                 networking.sendZombieDeath(z.id);
                 gameState.zombies.splice(i, 1);
                 gameState.score += 10;
+                gameState.killedInWave++;
+                
+                // Advance Wave logic
+                if (gameState.killedInWave >= (gameState.wave * 5)) {
+                    gameState.wave++;
+                    gameState.killedInWave = 0;
+                    console.log("!!! WAVE CLEAR !!! NEXT WAVE:", gameState.wave);
+                }
             } else {
                 syncData.push({ id: z.id, x: z.x, y: z.y, hp: z.hp });
             }
