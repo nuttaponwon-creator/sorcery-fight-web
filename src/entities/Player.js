@@ -19,13 +19,13 @@ import {
     TojiBullet,
     CursedSpeech,
     RikaClaw,
-    ManifestRika
+    ManifestRika,
+    InfiniteVoid
 } from './SkillObjects.js';
 
 export class Player {
     constructor(x, y, type = 'gojo') {
         this.type = type;
-        // ป้องกัน Error ถ้าหา Type ไม่เจอ ให้เป็น Gojo
         this.stats = CHAR_DATA[type] || CHAR_DATA['gojo'];
         this.x = x;
         this.y = y;
@@ -129,7 +129,7 @@ export class Player {
             const offset = (this.comboCount % 2 === 0) ? -20 : 20;
             const px = this.x + Math.cos(this.angle) * 30 + Math.cos(this.angle + Math.PI/2) * offset;
             const py = this.y + Math.sin(this.angle) * 30 + Math.sin(this.angle + Math.PI/2) * offset;
-            this.spawn(new PunchBox(px, py, this.angle, 25)); 
+            this.spawn(new PunchBox(px, py, this.angle, 35)); 
         } else if (this.type === 'sukuna') {
             this.spawn(new CleaveSlash(this.x, this.y, this.angle));
         } else { 
@@ -141,18 +141,18 @@ export class Player {
     skillQ() {
         if (this.cd.q > 0) return; this.cd.q = this.stats.cd.q;
         if (this.type === 'gojo') {
-            this.x += Math.cos(this.angle) * 200; this.y += Math.sin(this.angle) * 200;
+            this.spawn(new BlueOrb(this.x, this.y, SKILL_SETTINGS.gojo.blue));
         } else if (this.type === 'yuta') {
-            const settings = SKILL_SETTINGS.yuta.cursedSpeech;
-            this.spawn(new CursedSpeech(this.x, this.y, settings));
+            this.spawn(new CursedSpeech(this.x, this.y, SKILL_SETTINGS.yuta.cursedSpeech));
         } else if (this.type === 'toji') {
             this.spawn(new InvertedSpear(this.x, this.y, this.angle));
+            this.x += Math.cos(this.angle) * 150; this.y += Math.sin(this.angle) * 150;
         }
     }
 
     skillE() {
         if (this.cd.e > 0) return; this.cd.e = this.stats.cd.e;
-        if (this.type === 'gojo') { this.spawn(new BlueOrb(this.x, this.y, SKILL_SETTINGS.gojo.blue)); } 
+        if (this.type === 'gojo') { this.spawn(new RedOrb(this.x, this.y, this.angle, SKILL_SETTINGS.gojo.red)); } 
         else if (this.type === 'sukuna') { this.spawn(new FireArrow(this.x, this.y, this.angle)); } 
         else if (this.type === 'yuta') { this.spawn(new RikaClaw(this.x, this.y, this.angle, SKILL_SETTINGS.yuta.rikaClaw)); }
         else { this.spawn(new TojiBullet(this.x, this.y, this.angle)); }
@@ -160,7 +160,10 @@ export class Player {
 
     skillR() {
         if (this.cd.r > 0) return; this.cd.r = this.stats.cd.r;
-        if (this.type === 'gojo') { this.spawn(new RedOrb(this.x, this.y, this.angle, SKILL_SETTINGS.gojo.red)); } 
+        if (this.type === 'gojo') { 
+            // Teleport
+            this.x += Math.cos(this.angle) * 300; this.y += Math.sin(this.angle) * 300;
+        } 
         else if (this.type === 'sukuna') { this.spawn(new WorldSlash(this.x, this.y, this.angle, SKILL_SETTINGS.sukuna.worldSlash)); }
     }
 
@@ -173,7 +176,10 @@ export class Player {
     finishUlt() {
         this.casting.active = false;
         this.cd.space = this.stats.cd.space;
-        if (this.casting.type === 'purple') this.spawn(new HollowPurple(this.x, this.y, this.angle));
+        if (this.casting.type === 'purple') {
+            this.spawn(new HollowPurple(this.x, this.y, this.angle));
+            this.spawn(new InfiniteVoid(this.x, this.y, SKILL_SETTINGS.gojo.void));
+        }
         else if (this.casting.type === 'shrine') this.spawn(new MalevolentShrineObject(this.x, this.y, SKILL_SETTINGS.sukuna.shrine));
         else if (this.casting.type === 'manifest') this.spawn(new ManifestRika(this.x, this.y, SKILL_SETTINGS.yuta.manifest));
         else if (this.casting.type === 'heavenly') this.buffs.heavenly = SKILL_SETTINGS.toji.heavenly.duration;

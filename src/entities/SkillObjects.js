@@ -9,6 +9,30 @@ export class Particle extends GameObject {
     draw(ctx) { ctx.save(); ctx.globalAlpha = this.life/30; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
 }
 
+export class InfiniteVoid extends GameObject {
+    constructor(x, y, settings) {
+        super(x, y); this.radius = settings.radius || 600; this.life = settings.duration || 300;
+    }
+    update(zombies, particleList) {
+        this.life--; if (this.life <= 0) this.dead = true;
+        zombies.forEach(z => {
+            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
+                z.stunTimer = 10; // Freeze zombies
+            }
+        });
+        if(this.life % 20 === 0) {
+            for(let i=0; i<10; i++) particleList.push(new Particle(this.x + (Math.random()-0.5)*this.radius*2, this.y + (Math.random()-0.5)*this.radius*2, 'white', 2));
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y);
+        ctx.beginPath(); ctx.arc(0,0,this.radius,0,Math.PI*2);
+        ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill();
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+    }
+}
+
 export class PunchBox extends GameObject {
     constructor(x, y, angle, damage) { super(x, y); this.angle = angle; this.damage = damage; this.life = 5; }
     update() { this.life--; if (this.life <= 0) this.dead = true; }

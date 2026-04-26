@@ -16,13 +16,14 @@ import {
     TojiBullet,
     CursedSpeech,
     RikaClaw,
-    ManifestRika
+    ManifestRika,
+    InfiniteVoid
 } from './SkillObjects.js';
 
 export class RemotePlayer {
     constructor(type, x, y, spawnerCallback) {
         this.type = type;
-        this.stats = CHAR_DATA[type];
+        this.stats = CHAR_DATA[type] || CHAR_DATA['gojo'];
         this.x = x;
         this.y = y;
         this.targetX = x;
@@ -75,27 +76,31 @@ export class RemotePlayer {
 
     performAction(type, angle) {
         if (type === 'punch') {
-            if (this.type === 'gojo') this.spawn(new PunchBox(this.x, this.y, angle, 25));
+            if (this.type === 'gojo') this.spawn(new PunchBox(this.x, this.y, angle, 35));
             else if (this.type === 'sukuna') this.spawn(new CleaveSlash(this.x, this.y, angle));
             else this.spawn(new KatanaSlash(this.x, this.y, angle, this, 1));
         }
         else if (type === 'skillQ') {
-            if (this.type === 'gojo') { /* Teleport effect? */ }
+            if (this.type === 'gojo') this.spawn(new BlueOrb(this.x, this.y, SKILL_SETTINGS.gojo.blue));
             else if (this.type === 'yuta') this.spawn(new CursedSpeech(this.x, this.y, SKILL_SETTINGS.yuta.cursedSpeech));
             else if (this.type === 'toji') this.spawn(new InvertedSpear(this.x, this.y, angle));
         }
         else if (type === 'skillE') {
-            if (this.type === 'gojo') this.spawn(new BlueOrb(this.x, this.y, SKILL_SETTINGS.gojo.blue));
+            if (this.type === 'gojo') this.spawn(new RedOrb(this.x, this.y, angle, SKILL_SETTINGS.gojo.red));
             else if (this.type === 'sukuna') this.spawn(new FireArrow(this.x, this.y, angle));
             else if (this.type === 'yuta') this.spawn(new RikaClaw(this.x, this.y, angle, SKILL_SETTINGS.yuta.rikaClaw));
             else this.spawn(new TojiBullet(this.x, this.y, angle));
         }
         else if (type === 'skillR') {
-            if (this.type === 'gojo') this.spawn(new RedOrb(this.x, this.y, angle, SKILL_SETTINGS.gojo.red));
-            else if (this.type === 'sukuna') this.spawn(new WorldSlash(this.x, this.y, angle, SKILL_SETTINGS.sukuna.worldSlash));
+            if (this.type === 'sukuna') this.spawn(new WorldSlash(this.x, this.y, angle, SKILL_SETTINGS.sukuna.worldSlash));
         }
         else if (type === 'skillUlt') {
-            // Remote players don't show casting bar usually, just the result
+            if (this.type === 'gojo') {
+                this.spawn(new HollowPurple(this.x, this.y, angle));
+                this.spawn(new InfiniteVoid(this.x, this.y, SKILL_SETTINGS.gojo.void));
+            }
+            else if (this.type === 'sukuna') this.spawn(new MalevolentShrineObject(this.x, this.y, SKILL_SETTINGS.sukuna.shrine));
+            else if (this.type === 'yuta') this.spawn(new ManifestRika(this.x, this.y, SKILL_SETTINGS.yuta.manifest));
         }
     }
 }

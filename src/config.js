@@ -9,10 +9,11 @@ export const CONFIG = {
 
 export const SKILL_SETTINGS = {
     gojo: {
-        punch: { damage: 25, radius: 50 },
-        blue: { pullForce: 8, radius: 300, duration: 240 },
-        red: { damage: 60, pushForce: 150, radius: 200 },
-        purple: { damage: 999, radius: 120 }
+        punch: { damage: 35, radius: 60 },
+        blue: { pullForce: 12, radius: 350, duration: 300 },
+        red: { damage: 100, pushForce: 250, radius: 250 },
+        purple: { damage: 2000, radius: 150 },
+        void: { radius: 700, duration: 600 }
     },
     sukuna: {
         slash: { damage: 20 },
