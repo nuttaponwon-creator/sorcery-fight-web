@@ -27,46 +27,61 @@ export const OBSTACLES = [
     { x: 1000, y: 1800, w: 150, h: 50 }
 ];
 
-// 2. ข้อมูลจุดเกิด
-export const SPAWN_ZONES = [
-    { x: 100, y: 100, w: 300, h: 300 },
-    { x: 2600, y: 100, w: 300, h: 300 },
-    { x: 100, y: 2600, w: 300, h: 300 },
-    { x: 2600, y: 2600, w: 300, h: 300 },
-    { x: 1300, y: 100, w: 400, h: 200 },
-    { x: 1300, y: 2700, w: 400, h: 200 }
+// 2. ข้อมูลจุดพอร์ทัล (Fixed Spawn Points)
+export const PORTALS = [
+    { x: 200, y: 200, name: "NORTH WEST" },
+    { x: 2800, y: 200, name: "NORTH EAST" },
+    { x: 200, y: 2800, name: "SOUTH WEST" },
+    { x: 2800, y: 2800, name: "SOUTH EAST" },
+    { x: 1500, y: 200, name: "NORTH GATE" },
+    { x: 1500, y: 2800, name: "SOUTH GATE" }
 ];
 
 // 3. Class สำหรับจัดการด่าน (วาด และ สุ่ม)
 export class Level {
     constructor() {
         this.obstacles = OBSTACLES;
-        this.spawnZones = SPAWN_ZONES;
+        this.portals = PORTALS;
     }
 
     draw(ctx) {
-        // วาดพื้นหลัง/เส้น Grid (ย้ายมาจาก main.js ก็ได้ หรือวาดแค่กำแพง)
-        ctx.fillStyle = '#111'; // สีพื้นกำแพง
+        // วาดพื้นหลัง/เส้น Grid
+        ctx.fillStyle = '#111';
         ctx.shadowBlur = 15;
         ctx.shadowColor = 'black';
 
         this.obstacles.forEach(obs => {
             ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-            
-            // ขอบกำแพง (Neon นิดๆ)
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 2;
             ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
         });
+
+        // วาด Portals
+        this.portals.forEach(p => {
+            ctx.save();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#a855f7';
+            ctx.fillStyle = 'rgba(168, 85, 247, 0.3)';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 40, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Portal Label
+            ctx.fillStyle = '#a855f7';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(p.name, p.x, p.y - 50);
+            ctx.restore();
+        });
         
-        ctx.shadowBlur = 0; // Reset
+        ctx.shadowBlur = 0;
     }
 
     getRandomSpawnPoint() {
-        const zone = this.spawnZones[Math.floor(Math.random() * this.spawnZones.length)];
-        return {
-            x: zone.x + Math.random() * zone.w,
-            y: zone.y + Math.random() * zone.h
-        };
+        return this.portals[Math.floor(Math.random() * this.portals.length)];
     }
 }

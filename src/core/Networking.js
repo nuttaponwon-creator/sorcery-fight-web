@@ -104,6 +104,10 @@ export class Networking {
         });
 
         // Zombie Sync Events
+        this.socket.on('remoteZombieHit', (data) => {
+            if (this.onRemoteZombieHit) this.onRemoteZombieHit(data);
+        });
+
         this.socket.on('remoteZombieSpawn', (zombieData) => {
             if (!this.isHost) {
                 if (this.onRemoteZombieSpawn) this.onRemoteZombieSpawn(zombieData);
@@ -172,6 +176,12 @@ export class Networking {
 
     sendZombieDeath(zombieId) {
         if (this.socket) this.socket.emit('zombieDeath', zombieId);
+    }
+
+    sendZombieHit(zombieId, damage) {
+        if (this.socket) {
+            this.socket.emit('zombieHit', { zombieId, damage });
+        }
     }
 
     sendZombieUpdate(zombies) {

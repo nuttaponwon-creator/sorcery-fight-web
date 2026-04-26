@@ -26,7 +26,7 @@ const createRoomBtn = document.getElementById('create-room-btn');
 const roomDisplay = document.getElementById('room-display');
 
 const level = new Level();
-const networking = new Networking(null, RemotePlayer, spawnObject);
+const networking = new Networking(null, RemotePlayer, (obj) => spawnObject(obj, false));
 
 // Game State
 let gameState = {
@@ -77,6 +77,12 @@ networking.onRemoteZombieUpdate = (zombieData) => {
     const ids = zombieData.map(d => d.id);
     gameState.zombies = gameState.zombies.filter(z => ids.includes(z.id));
 };
+networking.onRemoteZombieHit = (data) => {
+    if (networking.isHost) {
+        const z = gameState.zombies.find(z => z.id === data.zombieId);
+        if (z) z.hp -= data.damage;
+    }
+};
 
 networking.onReadyUpdate = (data) => {
     readyList.innerHTML = '';
@@ -121,8 +127,23 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-function spawnObject(obj) {
-    if (gameState.active) gameState.projectiles.push(obj);
+function spawnObject(obj, isLocal = true) {
+    if (gameState.active) {
+        obj.isLocal = isLocal; 
+        gameState.projectiles.push(obj);
+
+        if (isLocal) {
+            let settings = null;
+            if (obj.constructor.name === 'MalevolentShrineObject') settings = SKILL_SETTINGS.sukuna.shrine;
+            if (obj.constructor.name === 'WorldSlash') settings = SKILL_SETTINGS.sukuna.worldSlash;
+
+            networking.sendAction({
+                type: obj.constructor.name,
+                x: obj.x, y: obj.y, angle: obj.angle,
+                settings: settings
+            });
+        }
+    }
 }
 
 // --- SETUP CONTROLS ---
@@ -154,8 +175,7 @@ function updateUI() {
 
 function animate() {
     requestAnimationFrame(animate);
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!gameState.active) return;
 
@@ -227,7 +247,8 @@ function animate() {
     }
 
     gameState.projectiles.forEach((proj, i) => {
-        proj.update(gameState.zombies, gameState.particles);
+        // PASS networking ONLY if it is our local projectile
+        proj.update(gameState.zombies, gameState.particles, proj.isLocal ? networking : null);
         if (proj.dead) gameState.projectiles.splice(i, 1);
     });
     gameState.particles.forEach((pt, i) => {
@@ -239,7 +260,7 @@ function animate() {
 
     ctx.save();
     ctx.translate(-gameState.camera.x, -gameState.camera.y);
-    level.draw(ctx);
+    level.draw(ctx); // This now draws Portals too!
     ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 5;
     ctx.strokeRect(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT);
     gameState.projectiles.forEach(proj => proj.draw(ctx));

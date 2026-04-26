@@ -122,6 +122,16 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('zombieHit', (data) => {
+        const room = socket.data.room;
+        if (room && rooms[room]) {
+            const hostId = rooms[room].hostId;
+            if (hostId && hostId !== socket.id) {
+                io.to(hostId).emit('remoteZombieHit', { ...data, attackerId: socket.id });
+            }
+        }
+    });
+
     socket.on('zombieDeath', (id) => {
         const room = socket.data.room;
         if (room) socket.to(room).emit('remoteZombieDeath', id);

@@ -45,7 +45,18 @@ export class PunchBox extends GameObject {
         this.color = '#3b82f6'; 
         this.isCombo = isCombo;
     }
-    update() { this.life--; if(this.life <= 0) this.dead = true; }
+    update(zombies, particleList, networking = null) { 
+        this.life--; if(this.life <= 0) this.dead = true; 
+        
+        // Add hit detection for Punching
+        zombies.forEach(z => {
+            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                z.hp -= this.damage;
+                for(let k=0; k<2; k++) particleList.push(new Particle(z.x, z.y, 'white', 2, 2));
+            }
+        });
+    }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         const ratio = this.life / this.maxLife;
@@ -95,23 +106,25 @@ export class BlueOrb extends GameObject {
 
 export class RedOrb extends GameObject {
     constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*15; this.vy = Math.sin(angle)*15; this.life = 60; this.radius = 15; this.damage = 60; }
-    update(zombies, particleList) {
+    update(zombies, particleList, networking = null) {
         this.x += this.vx; this.y += this.vy; this.life--;
         if(this.life % 2 === 0) particleList.push(new Particle(this.x, this.y, '#ef4444', 3, 2));
         let hit = false;
         zombies.forEach(z => {
              if (!hit && Math.hypot(this.x - z.x, this.y - z.y) < 30) {
-                 hit = true; this.dead = true; this.explode(zombies, particleList);
+                 hit = true; this.dead = true; this.explode(zombies, particleList, networking);
              }
         });
-        if (this.life <= 0 && !this.dead) { this.dead = true; this.explode(zombies, particleList); }
+        if (this.life <= 0 && !this.dead) { this.dead = true; this.explode(zombies, particleList, networking); }
     }
-    explode(zombies, particleList) {
+    explode(zombies, particleList, networking = null) {
         for(let i=0; i<20; i++) particleList.push(new Particle(this.x, this.y, '#ff0000', Math.random()*8, 10));
         zombies.forEach(z => { 
             if (Math.hypot(this.x - z.x, this.y - z.y) < 200) { 
                 const ang = Math.atan2(z.y - this.y, z.x - this.x); 
-                z.x += Math.cos(ang) * 150; z.y += Math.sin(ang) * 150; z.hp -= this.damage; 
+                z.x += Math.cos(ang) * 150; z.y += Math.sin(ang) * 150; 
+                z.hp -= this.damage; 
+                if (networking) networking.sendZombieHit(z.id, this.damage);
             } 
         });
     }
@@ -124,12 +137,14 @@ export class RedOrb extends GameObject {
 
 export class HollowPurple extends GameObject {
     constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*8; this.vy = Math.sin(angle)*8; this.life = 150; this.radius = 100; }
-    update(zombies, particleList) {
+    update(zombies, particleList, networking = null) {
         this.x += this.vx; this.y += this.vy; this.life--; if(this.life <= 0) this.dead = true;
         for(let i=0; i<5; i++) particleList.push(new Particle(this.x + (Math.random()-0.5)*120, this.y + (Math.random()-0.5)*120, '#d8b4fe', 3, 1));
         zombies.forEach(z => { 
             if(Math.hypot(this.x - z.x, this.y - z.y) < this.radius + z.radius) { 
-                z.hp = -999; for(let k=0; k<5; k++) particleList.push(new Particle(z.x, z.y, '#a855f7', 4, 5)); 
+                z.hp = -999; 
+                if (networking) networking.sendZombieHit(z.id, 999);
+                for(let k=0; k<5; k++) particleList.push(new Particle(z.x, z.y, '#a855f7', 4, 5)); 
             } 
         });
     }
@@ -162,10 +177,18 @@ export class DismantleSlash extends GameObject {
         this.isCross = Math.random() < 0.4;
         this.curve = 10 + Math.random() * 20;
     }
-    update() { 
+    update(zombies, particleList, networking = null) { 
         this.life--; 
         if (this.life <= 0) this.dead = true;
-        // ดาเมจจะถูกคำนวณใน main.js เพราะมี property damage และ radius
+        
+        // Add hit detection for Dismantle
+        zombies.forEach(z => {
+            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                z.hp -= this.damage;
+                for(let k=0; k<2; k++) particleList.push(new Particle(z.x, z.y, 'red', 2, 2));
+            }
+        });
     }
     draw(ctx) {
         // ใช้โค้ดวาดเดียวกับ SlashVisual
@@ -192,7 +215,16 @@ export class CleaveSlash extends GameObject {
         this.radius = 50; // ✅ เพิ่มรัศมีให้ตีโดนง่ายขึ้น
         this.x += Math.cos(angle) * 40; this.y += Math.sin(angle) * 40;
     }
-    update() { this.life--; if(this.life <= 0) this.dead = true; }
+    update(zombies, particleList, networking = null) { 
+        this.life--; if(this.life <= 0) this.dead = true; 
+        zombies.forEach(z => {
+            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                z.hp -= this.damage;
+                for(let k=0; k<3; k++) particleList.push(new Particle(z.x, z.y, 'white', 3, 3));
+            }
+        });
+    }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         const r = this.life / this.maxLife;
@@ -233,23 +265,24 @@ export class SlashVisual extends GameObject {
 
 export class FireArrow extends GameObject {
     constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*25; this.vy = Math.sin(angle)*25; this.angle = angle; this.life = 60; this.damage = 100; }
-    update(zombies, particleList) {
+    update(zombies, particleList, networking = null) {
         this.x += this.vx; this.y += this.vy; this.life--;
         for(let i=0; i<3; i++) particleList.push(new Particle(this.x, this.y, '#fb923c', 5, 2));
         
         let hit = false;
         zombies.forEach(z => { 
             if(!hit && Math.hypot(this.x - z.x, this.y - z.y) < 30) {
-                hit = true; this.dead = true; this.explode(zombies, particleList);
+                hit = true; this.dead = true; this.explode(zombies, particleList, networking);
             }
         });
-        if (this.life <= 0 && !this.dead) { this.dead = true; this.explode(zombies, particleList); }
+        if (this.life <= 0 && !this.dead) { this.dead = true; this.explode(zombies, particleList, networking); }
     }
-    explode(zombies, particleList) {
+    explode(zombies, particleList, networking = null) {
         for(let i=0; i<50; i++) particleList.push(new Particle(this.x, this.y, '#f97316', Math.random()*15, 12));
         zombies.forEach(z => { 
             if(Math.hypot(this.x - z.x, this.y - z.y) < 250) { 
                 z.hp -= this.damage; 
+                if (networking) networking.sendZombieHit(z.id, this.damage);
                 particleList.push(new Particle(z.x, z.y, 'black', 5, 5)); 
             } 
         });
@@ -281,11 +314,12 @@ export class MalevolentShrineObject extends GameObject {
         super(x, y); this.radius = settings.radius; this.damage = 0; this.realDamage = settings.damagePerFrame; 
         this.life = settings.duration; this.maxLife = settings.duration; this.slashFreq = settings.slashFrequency; this.visualSlashes = []; 
     }
-    update(zombies, particleList) {
+    update(zombies, particleList, networking = null) {
         this.life--; if(this.life <= 0) this.dead = true;
         zombies.forEach(z => {
             if(Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
                 z.hp -= this.realDamage;
+                if (networking) networking.sendZombieHit(z.id, this.realDamage);
                 if (z.applyStun) z.applyStun(5); else z.stunTimer = 5; 
                 if(Math.random() < 0.1) particleList.push(new Particle(z.x, z.y, '#dc2626', 2));
             }
@@ -328,7 +362,16 @@ export class KatanaSlash extends GameObject {
         this.x += Math.cos(angle) * 40; this.y += Math.sin(angle) * 40;
         this.slashTilt = (Math.PI / 4) * offsetSide * -1; 
     }
-    update() { this.life--; if(this.life <= 0) this.dead = true; }
+    update(zombies, particleList, networking = null) { 
+        this.life--; if(this.life <= 0) this.dead = true; 
+        zombies.forEach(z => {
+            if (Math.hypot(this.x - z.x, this.y - z.y) < 60) {
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                z.hp -= this.damage;
+                for(let k=0; k<3; k++) particleList.push(new Particle(z.x, z.y, 'black', 2, 4));
+            }
+        });
+    }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle + this.slashTilt);
         const ratio = this.life / this.maxLife; const scale = 1 + (1 - ratio) * 0.5; ctx.scale(scale, scale);
@@ -342,12 +385,14 @@ export class TojiBullet extends GameObject {
     constructor(x, y, angle) {
         super(x, y); this.vx = Math.cos(angle)*40; this.vy = Math.sin(angle)*40; this.angle = angle; this.life = 40; this.damage = 30;
     }
-    update(zombies, particleList) {
+    update(zombies, particleList, networking = null) {
         this.x += this.vx; this.y += this.vy; this.life--; if(this.life <= 0) this.dead = true;
         particleList.push(new Particle(this.x, this.y, '#555', 2, 0));
         zombies.forEach(z => { 
             if(Math.hypot(this.x - z.x, this.y - z.y) < 30) { 
-                z.hp -= this.damage; this.dead = true; 
+                z.hp -= this.damage; 
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                this.dead = true; 
                 particleList.push(new Particle(z.x, z.y, 'white', 3, 5));
             } 
         });
@@ -361,7 +406,16 @@ export class TojiBullet extends GameObject {
 
 export class InvertedSpear extends GameObject {
     constructor(x, y, angle) { super(x, y); this.angle = angle; this.life = 20; this.speed = 35; this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed; this.damage = 50; }
-    update(zombies, particleList) { this.x += this.vx; this.y += this.vy; this.life--; if(this.life<=0) this.dead=true; zombies.forEach(z => { if(Math.hypot(this.x - z.x, this.y - z.y) < 40) { z.hp -= this.damage; particleList.push(new Particle(z.x, z.y, '#10b981', 3, 5)); } }); }
+    update(zombies, particleList, networking = null) { 
+        this.x += this.vx; this.y += this.vy; this.life--; if(this.life<=0) this.dead=true; 
+        zombies.forEach(z => { 
+            if(Math.hypot(this.x - z.x, this.y - z.y) < 40) { 
+                z.hp -= this.damage; 
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                particleList.push(new Particle(z.x, z.y, '#10b981', 3, 5)); 
+            } 
+        }); 
+    }
     draw(ctx) { 
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
         ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-30, -3, 30, 6);
