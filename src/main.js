@@ -5,6 +5,7 @@ import { RemotePlayer } from './entities/RemotePlayer.js';
 import { Zombie } from './entities/Zombie.js';
 import { Particle } from './entities/SkillObjects.js';
 import { Level } from './core/Level.js';
+import { Networking } from './core/Networking.js';
 import { audioManager } from './core/AudioManager.js';
 
 console.log("Game Script Loaded! (Room-Based Multiplayer)");
