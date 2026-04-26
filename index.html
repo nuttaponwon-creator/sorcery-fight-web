@@ -87,6 +87,11 @@
                         <h2 class="text-3xl font-bold text-white mb-2">RYOMEN SUKUNA</h2>
                         <p class="text-red-500 text-sm tracking-wider">KING OF CURSES</p>
                     </div>
+                    <div id="card-yuta" class="character-card" onclick="selectChar('yuta')">
+                        <div class="text-6xl mb-4">💍</div>
+                        <h2 class="text-3xl font-bold text-white mb-2">YUTA</h2>
+                        <p class="text-gray-300 text-sm tracking-wider">PURE LOVE</p>
+                    </div>
                 </div>
 
                 <div class="flex flex-col gap-3 w-full max-w-md mx-auto mb-6">
@@ -169,7 +174,8 @@
             window.selectedCharType = type;
             document.getElementById('card-gojo').classList.toggle('selected', type === 'gojo');
             document.getElementById('card-sukuna').classList.toggle('selected', type === 'sukuna');
-            document.getElementById('card-toji').classList.toggle('selected', type === 'toji'); // ✅ เพิ่มบรรทัดนี้
+            document.getElementById('card-toji').classList.toggle('selected', type === 'toji'); 
+            document.getElementById('card-yuta').classList.toggle('selected', type === 'yuta');
         };
     </script>
 

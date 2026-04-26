@@ -3,7 +3,12 @@ import { input } from './core/Input.js';
 import { Player } from './entities/Player.js';
 import { RemotePlayer } from './entities/RemotePlayer.js';
 import { Zombie } from './entities/Zombie.js';
-import { Particle, HollowPurple, MalevolentShrineObject } from './entities/SkillObjects.js';
+import { 
+    Particle, HollowPurple, MalevolentShrineObject, 
+    CursedSpeech, RikaClaw, ManifestRika,
+    PunchBox, BlueOrb, RedOrb, FireArrow, WorldSlash,
+    InvertedSpear, KatanaSlash, TojiBullet, CleaveSlash
+} from './entities/SkillObjects.js';
 import { DropItem } from './entities/Drops.js';
 import { Level } from './core/Level.js';
 import { Networking } from './core/Networking.js';
