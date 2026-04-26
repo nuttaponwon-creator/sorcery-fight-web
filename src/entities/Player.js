@@ -141,7 +141,7 @@ export class Player {
     skillQ() {
         if (this.cd.q > 0) return; this.cd.q = this.stats.cd.q;
         if (this.type === 'gojo') {
-            this.spawn(new BlueOrb(this.x, this.y, SKILL_SETTINGS.gojo.blue));
+            this.spawn(new BlueOrb(this.x, this.y, SKILL_SETTINGS.gojo.blue, this));
         } else if (this.type === 'yuta') {
             this.spawn(new CursedSpeech(this.x, this.y, SKILL_SETTINGS.yuta.cursedSpeech));
         } else if (this.type === 'toji') {

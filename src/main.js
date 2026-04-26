@@ -253,7 +253,10 @@ function animate() {
     networking.updateRemotePlayers(gameState.camera);
 
     // --- ZOMBIE SYNC & WAVE LOGIC ---
-    if (networking.isHost && gameState.gameStarted) {
+    // บังคับให้เกิดซอมบี้ถ้าเป็น Host หรือถ้าเล่นคนเดียวแล้วยังไม่มีซอมบี้
+    const shouldSpawn = networking.isHost && gameState.gameStarted;
+    
+    if (shouldSpawn) {
         gameState.spawnTimer++;
         
         // Difficulty scaling based on wave
@@ -283,7 +286,7 @@ function animate() {
                 const d = Math.hypot(z.x - p.x, z.y - p.y);
                 if (d < minDist) { minDist = d; closest = p; }
             });
-            z.update(closest || gameState.player);
+            z.update(closest || gameState.player, networking.isHost);
             
             allPlayers.forEach(p => {
                 if (p && !p.isDead && Math.hypot(z.x - p.x, z.y - p.y) < z.radius + p.radius) {

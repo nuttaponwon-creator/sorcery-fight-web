@@ -34,7 +34,7 @@ export class Zombie {
         this.hp = hp;
     }
 
-    update(player) {
+    update(player, isHost = false) {
         if (this.stunTimer > 0) {
             this.stunTimer--;
             this.isStunned = true;
@@ -42,11 +42,13 @@ export class Zombie {
         }
         this.isStunned = false;
 
-        // Smoothly interpolate to target position (for clients)
-        if (Math.abs(this.targetX - this.x) > 0.1 || Math.abs(this.targetY - this.y) > 0.1) {
-            this.x += (this.targetX - this.x) * 0.25;
-            this.y += (this.targetY - this.y) * 0.25;
-            return; // If we are interpolating, don't run AI logic here
+        // Smoothly interpolate to target position (for clients only)
+        if (!isHost) {
+            if (Math.abs(this.targetX - this.x) > 0.1 || Math.abs(this.targetY - this.y) > 0.1) {
+                this.x += (this.targetX - this.x) * 0.25;
+                this.y += (this.targetY - this.y) * 0.25;
+                return; 
+            }
         }
 
         if (this.hp <= 0) {

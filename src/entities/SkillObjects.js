@@ -1,9 +1,11 @@
 // src/entities/SkillObjects.js
+
 import { GameObject } from './GameObject.js';
 
 export class Particle extends GameObject {
-    constructor(x, y, color, speed = 5, size = 2) {
-        super(x, y); this.vx = (Math.random()-0.5)*speed; this.vy = (Math.random()-0.5)*speed; this.life = 30; this.color = color; this.size = size;
+    constructor(x, y, color, size, life = 30) {
+        super(x, y); this.color = color; this.size = size; this.life = life;
+        this.vx = (Math.random() - 0.5) * 5; this.vy = (Math.random() - 0.5) * 5;
     }
     update() { this.x += this.vx; this.y += this.vy; this.life--; if (this.life <= 0) this.dead = true; }
     draw(ctx) { ctx.save(); ctx.globalAlpha = this.life/30; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
@@ -41,9 +43,22 @@ export class PunchBox extends GameObject {
 
 // --- GOJO SKILLS ---
 export class BlueOrb extends GameObject {
-    constructor(x, y, settings) { super(x, y); this.radius = settings.radius; this.pull = settings.pullForce; this.life = settings.duration; }
+    constructor(x, y, settings, owner = null) { 
+        super(x, y); 
+        this.radius = settings.radius; 
+        this.pull = settings.pullForce; 
+        this.life = settings.duration; 
+        this.owner = owner; // ลอยตามเจ้าของ
+    }
     update(zombies, particleList) {
         this.life--; if (this.life <= 0) this.dead = true;
+        
+        // ถ้ามีเจ้าของ ให้ขยับตามเจ้าของ
+        if (this.owner) {
+            this.x = this.owner.x;
+            this.y = this.owner.y;
+        }
+
         zombies.forEach(z => {
             const dist = Math.hypot(this.x - z.x, this.y - z.y);
             if (dist < this.radius) {
@@ -53,7 +68,12 @@ export class BlueOrb extends GameObject {
         });
         for(let i=0; i<3; i++) particleList.push(new Particle(this.x + (Math.random()-0.5)*this.radius, this.y + (Math.random()-0.5)*this.radius, '#3b82f6', 2));
     }
-    draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 20; ctx.shadowColor = '#3b82f6'; ctx.fillStyle = 'rgba(59, 130, 246, 0.4)'; ctx.beginPath(); ctx.arc(0,0, this.radius, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
+    draw(ctx) { 
+        ctx.save(); ctx.translate(this.x, this.y); ctx.globalCompositeOperation = 'lighter'; 
+        ctx.shadowBlur = 20; ctx.shadowColor = '#3b82f6'; ctx.fillStyle = 'rgba(59, 130, 246, 0.4)'; 
+        ctx.beginPath(); ctx.arc(0,0, this.radius, 0, Math.PI*2); ctx.fill(); 
+        ctx.restore(); 
+    }
 }
 
 export class RedOrb extends GameObject {
@@ -65,9 +85,9 @@ export class RedOrb extends GameObject {
     explode(zombies, particleList, networking = null) {
         for(let i=0; i<20; i++) particleList.push(new Particle(this.x, this.y, '#ff0000', Math.random()*8, 10));
         zombies.forEach(z => { 
-            if (Math.hypot(this.x - z.x, this.y - z.y) < 200) { 
+            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) { 
                 const ang = Math.atan2(z.y - this.y, z.x - this.x); 
-                z.x += Math.cos(ang) * 150; z.y += Math.sin(ang) * 150; 
+                z.x += Math.cos(ang) * this.push; z.y += Math.sin(ang) * this.push; 
                 z.hp -= this.damage; 
                 if (networking) networking.sendZombieHit(z.id, this.damage);
             } 
@@ -81,7 +101,7 @@ export class RedOrb extends GameObject {
 }
 
 export class HollowPurple extends GameObject {
-    constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*8; this.vy = Math.sin(angle)*8; this.life = 150; this.radius = 100; }
+    constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*8; this.vy = Math.sin(angle)*8; this.life = 150; this.radius = 150; }
     update(zombies, particleList, networking = null) {
         this.x += this.vx; this.y += this.vy; this.life--; if(this.life <= 0) this.dead = true;
         for(let i=0; i<5; i++) particleList.push(new Particle(this.x + (Math.random()-0.5)*120, this.y + (Math.random()-0.5)*120, '#d8b4fe', 3, 1));
@@ -98,8 +118,6 @@ export class HollowPurple extends GameObject {
         const grad = ctx.createRadialGradient(0,0,20, 0,0,this.radius); 
         grad.addColorStop(0, 'white'); grad.addColorStop(0.5, '#a855f7'); grad.addColorStop(1, 'transparent');
         ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0,0, this.radius, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = 'white'; ctx.lineWidth = 3; 
-        for(let i=0; i<3; i++) { ctx.beginPath(); ctx.arc(0, 0, this.radius * (0.8 + Math.random()*0.4), Math.random()*Math.PI*2, Math.random()*Math.PI*2 + 1); ctx.stroke(); }
         ctx.restore();
     }
 }
@@ -111,66 +129,66 @@ export class CleaveSlash extends GameObject {
     }
     update(zombies, particleList, networking = null) {
         this.life--; if(this.life <= 0) this.dead = true;
+        const tx = this.x + Math.cos(this.angle) * this.range;
+        const ty = this.y + Math.sin(this.angle) * this.range;
         zombies.forEach(z => {
-            const dist = Math.hypot(this.x - z.x, this.y - z.y);
+            const dist = Math.hypot(z.x - this.x, z.y - this.y);
             const angToZ = Math.atan2(z.y - this.y, z.x - this.x);
-            const diff = Math.abs(angToZ - this.angle);
-            if (dist < this.range && (diff < 0.5 || diff > Math.PI*2 - 0.5)) {
+            if (dist < this.range && Math.abs(angToZ - this.angle) < 0.4) {
                 z.hp -= this.damage;
                 if (networking) networking.sendZombieHit(z.id, this.damage);
-                for(let k=0; k<2; k++) particleList.push(new Particle(z.x, z.y, 'white', 2, 4));
+                particleList.push(new Particle(z.x, z.y, 'red', 2));
             }
         });
     }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(this.range, 0); ctx.stroke(); ctx.restore();
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(this.range, 0); ctx.stroke();
+        ctx.restore();
     }
 }
 
 export class FireArrow extends GameObject {
-    constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*25; this.vy = Math.sin(angle)*25; this.angle = angle; this.life = 60; this.damage = 100; }
+    constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*15; this.vy = Math.sin(angle)*15; this.angle = angle; this.life = 100; this.damage = 80; }
     update(zombies, particleList, networking = null) {
-        this.x += this.vx; this.y += this.vy; this.life--;
-        for(let i=0; i<3; i++) particleList.push(new Particle(this.x, this.y, '#fb923c', 5, 2));
-        let hit = false;
-        zombies.forEach(z => { 
-            if(!hit && Math.hypot(this.x - z.x, this.y - z.y) < 30) {
-                hit = true; this.dead = true; this.explode(zombies, particleList, networking);
+        this.x += this.vx; this.y += this.vy; this.life--; if(this.life <= 0) this.dead = true;
+        particleList.push(new Particle(this.x, this.y, '#f97316', 4, 10));
+        zombies.forEach(z => {
+            if(Math.hypot(this.x - z.x, this.y - z.y) < 50) {
+                z.hp -= this.damage;
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+                this.dead = true;
+                for(let i=0; i<15; i++) particleList.push(new Particle(this.x, this.y, '#f97316', 5, 20));
             }
         });
-        if (this.life <= 0 && !this.dead) { this.dead = true; this.explode(zombies, particleList, networking); }
     }
-    explode(zombies, particleList, networking = null) {
-        for(let i=0; i<50; i++) particleList.push(new Particle(this.x, this.y, '#f97316', Math.random()*15, 12));
-        zombies.forEach(z => { 
-            if(Math.hypot(this.x - z.x, this.y - z.y) < 250) { 
-                z.hp -= this.damage; 
-                if (networking) networking.sendZombieHit(z.id, this.damage);
-                particleList.push(new Particle(z.x, z.y, 'black', 5, 5)); 
-            } 
-        });
-    }
-    draw(ctx) { 
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
-        ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 20; ctx.shadowColor = 'orange'; 
-        ctx.fillStyle = '#ffedd5'; ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(-10, -10); ctx.lineTo(-10, 10); ctx.fill(); 
-        ctx.fillStyle = 'rgba(251, 146, 60, 0.6)'; ctx.beginPath(); ctx.arc(0,0, 20, 0, Math.PI*2); ctx.fill(); 
-        ctx.restore(); 
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        ctx.fillStyle = '#f97316'; ctx.shadowBlur = 20; ctx.shadowColor = 'orange'; ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(-10, -10); ctx.lineTo(-10, 10); ctx.fill();
+        ctx.restore();
     }
 }
 
 export class WorldSlash extends GameObject {
-    constructor(x, y, angle, settings) { super(x, y); this.angle = angle; this.damage = settings.damage; this.radius = settings.radius; this.vx = Math.cos(angle) * settings.speed; this.vy = Math.sin(angle) * settings.speed; this.life = settings.lifespan; }
-    update() { this.x += this.vx; this.y += this.vy; this.life--; if (this.life <= 0) this.dead = true; }
-    draw(ctx) { 
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
-        const wingSpan = this.radius; const forwardBulge = wingSpan * 0.8; const backOffset = -wingSpan * 0.3; 
-        ctx.beginPath(); ctx.moveTo(backOffset, -wingSpan); ctx.quadraticCurveTo(forwardBulge, 0, backOffset, wingSpan); 
-        ctx.strokeStyle = 'black'; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.shadowBlur = 20; ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.stroke(); 
-        ctx.strokeStyle = 'white'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(255,255,255,0.5)'; ctx.stroke(); 
-        ctx.restore(); 
+    constructor(x, y, angle, settings) { super(x, y); this.angle = angle; this.damage = settings.damage; this.life = 40; this.w = 400; this.h = 20; }
+    update(zombies, particleList, networking = null) {
+        this.life--; if(this.life <= 0) this.dead = true;
+        zombies.forEach(z => {
+            const dx = z.x - this.x; const dy = z.y - this.y;
+            const rotatedX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
+            const rotatedY = dx * Math.sin(-this.angle) + dy * Math.cos(-this.angle);
+            if (rotatedX > 0 && rotatedX < 800 && Math.abs(rotatedY) < 100) {
+                z.hp -= this.damage;
+                if (networking) networking.sendZombieHit(z.id, this.damage);
+            }
+        });
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        const alpha = this.life / 40; ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 5; ctx.shadowBlur = 30; ctx.shadowColor = 'white';
+        ctx.beginPath(); ctx.moveTo(0, -100); ctx.lineTo(800, 100); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 100); ctx.lineTo(800, -100); ctx.stroke();
+        ctx.restore();
     }
 }
 
@@ -276,105 +294,93 @@ export class TojiBullet extends GameObject {
             } 
         });
     }
-    draw(ctx) { ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.fillStyle = '#fbbf24'; ctx.fillRect(-5, -2, 10, 4); ctx.restore(); }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        ctx.fillStyle = 'white'; ctx.shadowBlur = 10; ctx.shadowColor = 'white'; ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
 }
 
 export class InvertedSpear extends GameObject {
-    constructor(x, y, angle) { super(x, y); this.angle = angle; this.life = 20; this.speed = 35; this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed; this.damage = 50; }
-    update(zombies, particleList, networking = null) { 
-        this.x += this.vx; this.y += this.vy; this.life--; if(this.life<=0) this.dead=true; 
-        zombies.forEach(z => { 
-            if(Math.hypot(this.x - z.x, this.y - z.y) < 40) { 
-                z.hp -= this.damage; 
+    constructor(x, y, angle) { super(x, y); this.vx = Math.cos(angle)*25; this.vy = Math.sin(angle)*25; this.angle = angle; this.life = 40; this.damage = 60; }
+    update(zombies, particleList, networking = null) {
+        this.x += this.vx; this.y += this.vy; this.life--; if(this.life <= 0) this.dead = true;
+        zombies.forEach(z => {
+            if(Math.hypot(this.x - z.x, this.y - z.y) < 40) {
+                z.hp -= this.damage;
                 if (networking) networking.sendZombieHit(z.id, this.damage);
-                particleList.push(new Particle(z.x, z.y, '#10b981', 3, 5)); 
-            } 
-        }); 
+                z.stunTimer = 120; // Massive stun
+                this.dead = true;
+            }
+        });
     }
-    draw(ctx) { 
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
-        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-30, -3, 30, 6);
-        ctx.fillStyle = '#d4d4d4'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#e5e5e5'; ctx.beginPath(); ctx.moveTo(4, -3); ctx.lineTo(50, 0); ctx.lineTo(4, 4); ctx.fill();
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        ctx.fillStyle = '#444'; ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, -5); ctx.lineTo(-10, 5); ctx.fill();
         ctx.restore();
     }
 }
 
 // --- YUTA SKILLS ---
 export class CursedSpeech extends GameObject {
-    constructor(x, y, settings) {
-        super(x, y); this.radius = settings.radius; this.damage = settings.damage;
-        this.life = 60; this.stunDuration = settings.stunDuration;
-    }
+    constructor(x, y, settings) { super(x, y); this.radius = settings.radius; this.life = 60; this.damage = settings.damage; }
     update(zombies, particleList, networking = null) {
         this.life--; if(this.life <= 0) this.dead = true;
         zombies.forEach(z => {
-            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
-                z.stunTimer = this.stunDuration;
-                if (Math.random() < 0.1) {
-                    z.hp -= this.damage;
-                    if (networking) networking.sendZombieHit(z.id, this.damage);
-                }
+            if(Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
+                z.stunTimer = 180; // "Don't Move"
+                if(this.life === 59) { z.hp -= this.damage; if (networking) networking.sendZombieHit(z.id, this.damage); }
             }
         });
-        for(let i=0; i<5; i++) particleList.push(new Particle(this.x + (Math.random()-0.5)*this.radius*2, this.y + (Math.random()-0.5)*this.radius*2, 'white', 2));
     }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y);
-        ctx.beginPath(); ctx.arc(0,0,this.radius,0,Math.PI*2);
-        ctx.strokeStyle = `rgba(255,255,255, ${this.life/60})`; ctx.lineWidth = 5; ctx.stroke();
-        ctx.fillStyle = 'white'; ctx.font = 'bold 30px Arial'; ctx.textAlign = 'center'; ctx.fillText("DON'T MOVE", 0, 10);
+        const alpha = this.life / 60; ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(0,0, this.radius, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = 'white'; ctx.font = 'bold 30px Arial'; ctx.textAlign = 'center';
+        ctx.fillText("DON'T MOVE", 0, -50);
         ctx.restore();
     }
 }
 
 export class RikaClaw extends GameObject {
-    constructor(x, y, angle, settings) {
-        super(x, y); this.angle = angle; this.damage = settings.damage; this.radius = settings.radius;
-        this.life = 15; this.maxLife = 15;
-    }
+    constructor(x, y, angle, settings) { super(x, y); this.angle = angle; this.damage = settings.damage; this.life = 20; this.range = settings.range; }
     update(zombies, particleList, networking = null) {
         this.life--; if(this.life <= 0) this.dead = true;
         zombies.forEach(z => {
-            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
-                z.hp -= this.damage;
-                if (networking) networking.sendZombieHit(z.id, this.damage);
-                for(let k=0; k<3; k++) particleList.push(new Particle(z.x, z.y, 'black', 4));
+            const dist = Math.hypot(z.x - this.x, z.y - this.y);
+            const angToZ = Math.atan2(z.y - this.y, z.x - this.x);
+            if(dist < this.range && Math.abs(angToZ - this.angle) < 0.8) {
+                z.hp -= this.damage; if (networking) networking.sendZombieHit(z.id, this.damage);
+                for(let k=0; k<2; k++) particleList.push(new Particle(z.x, z.y, '#500', 3));
             }
         });
     }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-        ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(100, 0); ctx.lineTo(0, 30); ctx.fill();
-        ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 4; ctx.stroke();
+        const alpha = this.life / 20; ctx.fillStyle = `rgba(100,0,0,${alpha})`;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(this.range, -50); ctx.lineTo(this.range, 50); ctx.fill();
         ctx.restore();
     }
 }
 
 export class ManifestRika extends GameObject {
-    constructor(x, y, settings) {
-        super(x, y); this.radius = settings.radius; this.damage = settings.damage;
-        this.life = settings.duration; this.maxLife = settings.duration;
-    }
+    constructor(x, y, settings) { super(x, y); this.radius = settings.radius; this.life = settings.duration; this.damage = settings.damagePerFrame; }
     update(zombies, particleList, networking = null) {
         this.life--; if(this.life <= 0) this.dead = true;
         zombies.forEach(z => {
-            if (Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
-                z.hp -= this.damage / 60; 
-                if (networking) networking.sendZombieHit(z.id, this.damage / 60);
+            if(Math.hypot(this.x - z.x, this.y - z.y) < this.radius) {
+                z.hp -= this.damage; if (networking) networking.sendZombieHit(z.id, this.damage);
                 z.stunTimer = 10;
             }
         });
-        if(this.life % 5 === 0) particleList.push(new Particle(this.x + (Math.random()-0.5)*this.radius*2, this.y + (Math.random()-0.5)*this.radius*2, 'purple', 3));
+        if(Math.random() < 0.2) particleList.push(new Particle(this.x + (Math.random()-0.5)*this.radius, this.y + (Math.random()-0.5)*this.radius, '#111', 5));
     }
     draw(ctx) {
         ctx.save(); ctx.translate(this.x, this.y);
-        ctx.globalAlpha = Math.min(1, this.life/60);
-        ctx.beginPath(); ctx.arc(0,0,this.radius,0,Math.PI*2);
+        ctx.beginPath(); ctx.arc(0,0, this.radius, 0, Math.PI*2);
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill();
-        ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 10; ctx.shadowBlur = 20; ctx.shadowColor = 'purple'; ctx.stroke();
-        ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, -80, 30, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#500'; ctx.lineWidth = 10; ctx.stroke();
         ctx.restore();
     }
 }
