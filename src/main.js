@@ -1,27 +1,39 @@
 import { CONFIG, SKILL_SETTINGS } from './config.js';
 import { input } from './core/Input.js';
-// เข้าไปในโฟลเดอร์ entities
 import { Player } from './entities/Player.js';
+import { RemotePlayer } from './entities/RemotePlayer.js';
 import { Zombie } from './entities/Zombie.js';
 import { Particle } from './entities/SkillObjects.js';
 import { Level } from './core/Level.js';
+import { Networking } from './core/Networking.js';
 
-console.log("Game Script Loaded! (Modular Structure Correct!)");
+console.log("Game Script Loaded! (Room-Based Multiplayer)");
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreDisplay = document.getElementById('score-display');
 const healthBar = document.getElementById('health-bar');
-const startBtn = document.getElementById('start-btn');
 const menuScreen = document.getElementById('menu-screen');
 const skillsHud = document.getElementById('skills-hud');
+const readyBtn = document.getElementById('ready-btn');
+const readySection = document.getElementById('ready-section');
+const readyList = document.getElementById('ready-list');
+const spectatorOverlay = document.getElementById('spectator-overlay');
+const spectatorTargetName = document.getElementById('spectator-target');
+const roomInput = document.getElementById('room-input');
+const joinRoomBtn = document.getElementById('join-room-btn');
+const createRoomBtn = document.getElementById('create-room-btn');
+const roomDisplay = document.getElementById('room-display');
 
-// ✅ สร้าง Instance ของ Level
 const level = new Level();
+const networking = new Networking(null, RemotePlayer, spawnObject);
 
 // Game State
 let gameState = {
     active: false,
+    gameStarted: false,
+    isReady: false,
+    isSpectating: false,
     score: 0,
     spawnTimer: 0,
     camera: { x: 0, y: 0 },
@@ -29,6 +41,76 @@ let gameState = {
     zombies: [],
     projectiles: [],
     particles: []
+};
+
+// Networking Callbacks
+networking.onRemoteZombieSpawn = (data) => {
+    if (gameState.zombies.some(z => z.id === data.id)) return;
+    const z = new Zombie(null, data.id);
+    z.setPosition(data.x, data.y);
+    z.speed = data.speed;
+    gameState.zombies.push(z);
+};
+
+networking.onRemoteZombieDeath = (id) => {
+    const idx = gameState.zombies.findIndex(z => z.id === id);
+    if (idx !== -1) {
+        const z = gameState.zombies[idx];
+        z.hp = 0; 
+        gameState.zombies.splice(idx, 1);
+        for (let k = 0; k < 5; k++) gameState.particles.push(new Particle(z.x, z.y, 'purple', 3));
+    }
+};
+
+networking.onRemoteZombieUpdate = (zombieData) => {
+    zombieData.forEach(data => {
+        const z = gameState.zombies.find(z => z.id === data.id);
+        if (z) {
+            z.x = data.x; z.y = data.y; z.hp = data.hp;
+        } else {
+            const newZ = new Zombie(null, data.id);
+            newZ.setPosition(data.x, data.y);
+            newZ.hp = data.hp;
+            gameState.zombies.push(newZ);
+        }
+    });
+    const ids = zombieData.map(d => d.id);
+    gameState.zombies = gameState.zombies.filter(z => ids.includes(z.id));
+};
+
+networking.onReadyUpdate = (data) => {
+    readyList.innerHTML = '';
+    data.forEach(p => {
+        const div = document.createElement('div');
+        div.className = `ready-item ${p.isReady ? 'ready' : ''}`;
+        div.innerText = `${p.name}: ${p.isReady ? 'READY' : 'WAITING'}`;
+        readyList.appendChild(div);
+    });
+};
+
+networking.onGameStart = () => {
+    console.log("!!! GAME START !!!");
+    menuScreen.classList.add('hidden'); // Hide entire menu overlay
+    gameState.gameStarted = true;
+    gameState.active = true;
+};
+
+networking.onRoomJoined = (code) => {
+    console.log("Lobby joined successfully:", code);
+    roomDisplay.innerText = code;
+    
+    // Hide all setup elements
+    document.getElementById('setup-menu-content').classList.add('hidden');
+    menuScreen.querySelector('h1').classList.add('hidden');
+    const pTag = menuScreen.querySelector('p');
+    if (pTag) pTag.classList.add('hidden');
+
+    // Show ready section
+    readySection.classList.remove('hidden');
+    
+    document.getElementById('leaderboard').classList.remove('hidden');
+    document.getElementById('chat-container').classList.remove('hidden');
+    skillsHud.classList.remove('hidden');
 };
 
 // Resize Function
@@ -39,158 +121,115 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// Callback
 function spawnObject(obj) {
     if (gameState.active) gameState.projectiles.push(obj);
 }
 
 // --- SETUP CONTROLS ---
 function setupGlobalControls() {
-    // 1. Keyboard (PC)
     window.addEventListener('keydown', e => {
-        if (!gameState.active || !gameState.player) return;
+        if (!gameState.active || !gameState.player || gameState.isSpectating) return;
         const key = e.key.toLowerCase();
-        if (key === 'q') gameState.player.skillQ();
-        if (key === 'e') gameState.player.skillE();
-        if (key === 'r') gameState.player.skillR();
-        if (e.code === 'Space') gameState.player.skillUlt();
+        if (key === 'q') { gameState.player.skillQ(); networking.sendAction('skillQ', gameState.player.angle); }
+        if (key === 'e') { gameState.player.skillE(); networking.sendAction('skillE', gameState.player.angle); }
+        if (key === 'r') { gameState.player.skillR(); networking.sendAction('skillR', gameState.player.angle); }
+        if (e.code === 'Space') { gameState.player.skillUlt(); networking.sendAction('skillUlt', gameState.player.angle); }
     });
 
-    // 2. Mouse Attack
     window.addEventListener('mousedown', e => {
-        if (!gameState.active || !gameState.player) return;
-        if (e.target.closest('.mobile-btn') || e.target.closest('#joystick-zone') || e.target.closest('.interactive')) {
-            return;
-        }
+        if (!gameState.active || !gameState.player || gameState.isSpectating) return;
+        if (e.target.closest('.interactive')) return;
         gameState.player.punch();
+        networking.sendAction('punch', gameState.player.angle);
     });
-
-    // 3. Mobile Buttons Binding
-    const bindButton = (id, action) => {
-        const btn = document.getElementById(id);
-        if (!btn) return;
-
-        const trigger = (e) => {
-            e.preventDefault();
-            if (gameState.active && gameState.player) {
-                action();
-                btn.style.transform = "scale(0.9)";
-                setTimeout(() => btn.style.transform = "scale(1)", 100);
-            }
-        };
-
-        btn.addEventListener('touchstart', trigger, { passive: false });
-        btn.addEventListener('mousedown', trigger);
-    };
-
-    bindButton('btn-punch', () => gameState.player.punch());
-    bindButton('btn-q', () => gameState.player.skillQ());
-    bindButton('btn-e', () => gameState.player.skillE());
-    bindButton('btn-r', () => gameState.player.skillR());
-    bindButton('btn-space', () => gameState.player.skillUlt());
 }
-
 setupGlobalControls();
 
-// --- GAME LOOP ---
 function updateUI() {
     if (!gameState.player) return;
-
     scoreDisplay.innerText = gameState.score;
     const hpPercent = Math.max(0, (gameState.player.health / gameState.player.maxHealth) * 100);
     healthBar.style.width = `${hpPercent}%`;
-
-    const setCD = (id, cur, max) => {
-        const el = document.getElementById(id);
-        if (el) el.style.height = `${(cur / max) * 100}%`;
-    };
-
-    const s = gameState.player.stats.cd;
-    const c = gameState.player.cd;
-    setCD('cd-q', c.q, s.q);
-    setCD('cd-e', c.e, s.e);
-    setCD('cd-r', c.r, s.r);
-    setCD('cd-space', c.space, s.space);
 }
 
 function animate() {
     requestAnimationFrame(animate);
-
-    // Clear background
     ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (!gameState.active || !gameState.player) return;
+    if (!gameState.active) return;
 
-    const p = gameState.player;
-    p.update(gameState.camera);
+    let camTarget = { x: 0, y: 0 };
+    if (!gameState.isSpectating && gameState.player) {
+        gameState.player.update(gameState.camera);
+        networking.sendMovement(gameState.player.x, gameState.player.y, gameState.player.angle);
+        camTarget = { x: gameState.player.x, y: gameState.player.y };
+        if (gameState.player.health <= 0) startSpectating();
+    } else {
+        const alivePlayers = Object.values(networking.remotePlayers).filter(rp => !rp.isDead);
+        if (alivePlayers.length > 0) {
+            const target = alivePlayers[0];
+            camTarget = { x: target.x, y: target.y };
+            spectatorTargetName.innerText = target.name.toUpperCase();
+        } else if (gameState.player) {
+            camTarget = { x: gameState.player.x, y: gameState.player.y };
+            spectatorTargetName.innerText = "NO ONE ALIVE";
+        }
+    }
 
     // Camera Logic
-    gameState.camera.x = p.x - canvas.width / 2;
-    gameState.camera.y = p.y - canvas.height / 2;
+    gameState.camera.x += (camTarget.x - canvas.width/2 - gameState.camera.x) * 0.1;
+    gameState.camera.y += (camTarget.y - canvas.height/2 - gameState.camera.y) * 0.1;
     gameState.camera.x = Math.max(0, Math.min(CONFIG.WORLD_WIDTH - canvas.width, gameState.camera.x));
     gameState.camera.y = Math.max(0, Math.min(CONFIG.WORLD_HEIGHT - canvas.height, gameState.camera.y));
 
-    // Zombie Spawning
-    gameState.spawnTimer++; // ต้องเพิ่มตัวนับเวลาด้วยครับ ไม่งั้นไม่เกิด
-    if (gameState.spawnTimer > CONFIG.SPAWN_RATE) {
-        const z = new Zombie(p);
+    networking.updateRemotePlayers(gameState.camera);
 
-        // ✅ ใช้ฟังก์ชันสุ่มจุดเกิดจาก Level
-        const spawnPoint = level.getRandomSpawnPoint();
-        z.setPosition(spawnPoint.x, spawnPoint.y);
-
-        gameState.zombies.push(z);
-        gameState.spawnTimer = 0;
-    }
-
-    // Update Zombies
-    gameState.zombies.forEach((z, i) => {
-        z.update(p);
-        if (Math.hypot(z.x - p.x, z.y - p.y) < z.radius + p.radius) {
-            p.health -= 0.5;
-            if (p.health <= 0) gameOver();
+    // --- ZOMBIE SYNC ---
+    if (networking.isHost && gameState.gameStarted) {
+        gameState.spawnTimer++;
+        if (gameState.spawnTimer > CONFIG.SPAWN_RATE) {
+            const spawnPoint = level.getRandomSpawnPoint();
+            const z = new Zombie(gameState.player);
+            z.setPosition(spawnPoint.x, spawnPoint.y);
+            gameState.zombies.push(z);
+            networking.sendZombieSpawn({ id: z.id, x: z.x, y: z.y, speed: z.speed });
+            gameState.spawnTimer = 0;
         }
-        if (z.dead) {
-            gameState.zombies.splice(i, 1);
-            gameState.score += 10;
-            for (let k = 0; k < 5; k++) gameState.particles.push(new Particle(z.x, z.y, 'purple', 3));
-        }
-    });
 
-    // Update Projectiles
-    gameState.projectiles.forEach((proj, i) => {
-        if (proj.update.length > 0) proj.update(gameState.zombies, gameState.particles);
-        else proj.update();
-
-        // Projectile Collision Logic
-        // เช็คว่า proj มีค่า damage หรือไม่ (บางอันเป็น visual)
-        if (!proj.dead && (proj.damage !== undefined && proj.damage > 0)) {
-            gameState.zombies.forEach(z => {
-                // เช็คระยะชน (ถ้า proj ไม่มี radius ให้ใช้ค่า default 20)
-                if (Math.hypot(proj.x - z.x, proj.y - z.y) < (proj.radius || 20) + z.radius) {
-                    // หักเลือดซอมบี้
-                    z.hp -= proj.damage;
-
-                    // ผลักซอมบี้ถอยหลังนิดหน่อย
-                    const ang = Math.atan2(z.y - p.y, z.x - p.x);
-                    z.x += Math.cos(ang) * 10; z.y += Math.sin(ang) * 10;
-
-                    // Effect เลือดสาด
-                    // ของใหม่ (สีแดงเลือด)
-                    gameState.particles.push(new Particle(z.x, z.y, '#dc2626', 3));
-
-                    // ถ้าเป็นกระสุนปืนปกติ ชนแล้วหายไป
-                    if (proj.constructor.name === 'Bullet') proj.dead = true;
+        const syncData = [];
+        gameState.zombies.forEach((z, i) => {
+            const allPlayers = [gameState.player, ...Object.values(networking.remotePlayers).filter(rp => !rp.isDead)];
+            let closest = null, minDist = Infinity;
+            allPlayers.forEach(p => {
+                if (!p) return;
+                const d = Math.hypot(z.x - p.x, z.y - p.y);
+                if (d < minDist) { minDist = d; closest = p; }
+            });
+            z.update(closest || gameState.player);
+            allPlayers.forEach(p => {
+                if (p && !p.isDead && Math.hypot(z.x - p.x, z.y - p.y) < z.radius + p.radius) {
+                    if (p === gameState.player) {
+                        p.health -= 0.5;
+                        networking.sendHealthUpdate(p.health);
+                    }
                 }
             });
-        }
+            if (z.dead) {
+                networking.sendZombieDeath(z.id);
+                gameState.zombies.splice(i, 1);
+                gameState.score += 10;
+            } else {
+                syncData.push({ id: z.id, x: z.x, y: z.y, hp: z.hp });
+            }
+        });
+        networking.sendZombieUpdate(syncData);
+    }
+
+    gameState.projectiles.forEach((proj, i) => {
+        proj.update(gameState.zombies, gameState.particles);
         if (proj.dead) gameState.projectiles.splice(i, 1);
     });
-
-    
-
-    // Particles Update
     gameState.particles.forEach((pt, i) => {
         pt.update();
         if (pt.dead) gameState.particles.splice(i, 1);
@@ -198,67 +237,77 @@ function animate() {
 
     updateUI();
 
-    // --- DRAW WORLD ---
     ctx.save();
     ctx.translate(-gameState.camera.x, -gameState.camera.y);
-
-    // 1. วาดพื้น/กำแพง (เรียกจาก Level)
     level.draw(ctx);
-
-    // (ถ้าอยากวาด Grid ทับหรือรองพื้น ก็วาดตรงนี้ได้ แต่ใน level.draw มีวาดกำแพงทับไปแล้ว)
-    // วาดขอบโลกเพิ่มความชัดเจน
     ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 5;
     ctx.strokeRect(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT);
-
-    // 2. วาด Entities
     gameState.projectiles.forEach(proj => proj.draw(ctx));
     gameState.particles.forEach(pt => pt.draw(ctx));
     gameState.zombies.forEach(z => z.draw(ctx));
-    p.draw(ctx);
-
+    if (gameState.player) gameState.player.draw(ctx);
+    networking.drawRemotePlayers(ctx);
     ctx.restore();
 }
 
-// --- GAME CONTROL ---
-function gameOver() {
-    gameState.active = false;
-    menuScreen.classList.remove('hidden');
-    skillsHud.classList.add('hidden');
-    menuScreen.querySelector('h1').innerText = "GAME OVER";
-    startBtn.innerText = "Reincarnate (Restart)";
+function startSpectating() {
+    gameState.isSpectating = true;
+    spectatorOverlay.classList.remove('hidden');
+    networking.sendDeath();
 }
 
-// ผูกปุ่ม Start
-if (startBtn) {
-    startBtn.onclick = () => {
-        console.log("Start Clicked");
-        menuScreen.classList.add('hidden');
-        skillsHud.classList.remove('hidden');
+// --- BUTTONS ---
+const initJoin = (roomCode) => {
+    joinRoomBtn.disabled = true;
+    createRoomBtn.disabled = true;
+    joinRoomBtn.style.opacity = "0.5";
+    createRoomBtn.style.opacity = "0.5";
 
-        // Reset State
-        gameState.active = true;
-        gameState.score = 0;
-        gameState.spawnTimer = 0;
-        gameState.zombies = [];
-        gameState.projectiles = [];
-        gameState.particles = [];
+    const playerName = document.getElementById('player-name').value || 'Sorcerer';
+    const charType = window.selectedCharType || 'gojo';
+    
+    gameState.player = new Player(charType, 1200, 1200, spawnObject);
+    gameState.player.name = playerName;
 
-        const charType = window.selectedCharType || 'gojo';
+    networking.connect({
+        roomCode, name: playerName, type: charType,
+        x: gameState.player.x, y: gameState.player.y,
+        angle: gameState.player.angle,
+        health: gameState.player.health, maxHealth: gameState.player.maxHealth
+    });
+};
 
-        // Set Icons ตามตัวละคร
-        const setIcon = (id, icon) => document.getElementById(id).innerText = icon;
-        if (charType === 'gojo') {
-            setIcon('icon-q', '⚡'); setIcon('icon-e', '🔵'); setIcon('icon-r', '🔴'); setIcon('icon-space', '🟣');
-        } else if (charType === 'sukuna') {
-            setIcon('icon-q', '🔪'); setIcon('icon-e', '🔥'); setIcon('icon-r', '👹'); setIcon('icon-space', '⛩️');
-        } else if (charType === 'toji') {
-            setIcon('icon-q', '🔪'); setIcon('icon-e', '⛓️'); setIcon('icon-r', '🪵'); setIcon('icon-space', '💪');
-        }
+joinRoomBtn.onclick = () => {
+    const code = roomInput.value.trim().toUpperCase();
+    if (!code) { alert("PLEASE ENTER A ROOM CODE"); return; }
+    initJoin(code);
+};
 
-        gameState.player = new Player(charType, 1200, 1200, spawnObject);
-    };
-} else {
-    console.error("❌ หาปุ่ม Start ไม่เจอ! เช็ค HTML ID='start-btn' ด่วน");
-}
+createRoomBtn.onclick = () => {
+    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+    initJoin(code);
+};
+
+readyBtn.onclick = () => {
+    gameState.isReady = !gameState.isReady;
+    readyBtn.innerText = gameState.isReady ? "I AM READY (✔)" : "I AM READY";
+    readyBtn.classList.toggle('active', gameState.isReady);
+    networking.sendReady(gameState.isReady);
+};
+
+// Chat & Score
+setInterval(() => {
+    if (gameState.active && gameState.player && gameState._lastScore !== gameState.score) {
+        networking.sendScore(gameState.score);
+        gameState._lastScore = gameState.score;
+    }
+}, 1000);
+
+document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.value.trim()) {
+        networking.sendChatMessage(e.target.value.trim());
+        e.target.value = ''; e.target.blur();
+    }
+});
 
 animate();

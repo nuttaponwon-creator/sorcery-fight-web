@@ -2,8 +2,9 @@ import { CONFIG } from '../config.js';
 import { OBSTACLES } from '../core/Level.js'; 
 
 export class Zombie {
-    constructor(player) {
+    constructor(player, id) {
         this.player = player;
+        this.id = id || Math.random().toString(36).substr(2, 9);
         this.radius = 20;
         this.speed = 2 + Math.random() * 2;
         this.dead = false;
@@ -26,6 +27,8 @@ export class Zombie {
             return;
         }
         
+        if (!player) return; // Skip update if no target player
+
         const angle = Math.atan2(player.y - this.y, player.x - this.x);
         const vx = Math.cos(angle) * this.speed;
         const vy = Math.sin(angle) * this.speed;
@@ -62,7 +65,8 @@ export class Zombie {
         
         // ตาแดง
         ctx.fillStyle = '#ef4444'; 
-        const angle = Math.atan2(this.player.y - this.y, this.player.x - this.x);
+        const target = this.player || { x: this.x + 10, y: this.y }; // Look forward if no target
+        const angle = Math.atan2(target.y - this.y, target.x - this.x);
         ctx.rotate(angle);
         ctx.beginPath(); ctx.arc(8, -6, 4, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(8, 6, 4, 0, Math.PI*2); ctx.fill();
