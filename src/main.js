@@ -3,7 +3,8 @@ import { input } from './core/Input.js';
 import { Player } from './entities/Player.js';
 import { RemotePlayer } from './entities/RemotePlayer.js';
 import { Zombie } from './entities/Zombie.js';
-import { Particle } from './entities/SkillObjects.js';
+import { Particle, HollowPurple, MalevolentShrineObject } from './entities/SkillObjects.js';
+import { DropItem } from './entities/Drops.js';
 import { Level } from './core/Level.js';
 import { Networking } from './core/Networking.js';
 import { audioManager } from './core/AudioManager.js';
@@ -46,7 +47,8 @@ let gameState = {
     killedInWave: 0,
     zombies: [],
     projectiles: [],
-    particles: []
+    particles: [],
+    drops: []
 };
 
 // Networking Callbacks
@@ -98,6 +100,25 @@ networking.onReadyUpdate = (data) => {
         div.className = `ready-item ${p.isReady ? 'ready' : ''}`;
         div.innerText = `${p.name}: ${p.isReady ? 'READY' : 'WAITING'}`;
         readyList.appendChild(div);
+    });
+};
+
+networking.onLeaderboardUpdate = (data) => {
+    leaderList.innerHTML = '';
+    data.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = `leader-item ${p.isMVP ? 'mvp' : ''}`;
+        div.style.padding = '8px';
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.color = p.isMVP ? '#fcd34d' : 'white';
+        
+        div.innerHTML = `
+            <span>${i+1}. ${p.name} ${p.isMVP ? '👑' : ''}</span>
+            <span style="font-size: 12px; opacity: 0.8;">${p.kills} KILLS (${p.score})</span>
+        `;
+        leaderList.appendChild(div);
     });
 };
 
@@ -269,6 +290,12 @@ function animate() {
 
             if (z.dead) {
                 networking.sendZombieDeath(z.id);
+                
+                // Spawn Drop (20% chance)
+                if (Math.random() < 0.2) {
+                    gameState.drops.push(new DropItem(z.x, z.y));
+                }
+
                 gameState.zombies.splice(i, 1);
                 gameState.score += 10;
                 gameState.killedInWave++;
@@ -295,6 +322,10 @@ function animate() {
         pt.update();
         if (pt.dead) gameState.particles.splice(i, 1);
     });
+    gameState.drops.forEach((drop, i) => {
+        drop.update(gameState.player);
+        if (drop.dead) gameState.drops.splice(i, 1);
+    });
 
     updateUI();
 
@@ -303,6 +334,7 @@ function animate() {
     level.draw(ctx); // This now draws Portals too!
     ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 5;
     ctx.strokeRect(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT);
+    gameState.drops.forEach(drop => drop.draw(ctx));
     gameState.projectiles.forEach(proj => proj.draw(ctx));
     gameState.particles.forEach(pt => pt.draw(ctx));
     gameState.zombies.forEach(z => z.draw(ctx));

@@ -16,6 +16,9 @@ export class Zombie {
         this.y = 0;
         this.targetX = 0;
         this.targetY = 0;
+        
+        this.stunTimer = 0;
+        this.isStunned = false;
     }
     
     setPosition(x, y) {
@@ -32,6 +35,13 @@ export class Zombie {
     }
 
     update(player) {
+        if (this.stunTimer > 0) {
+            this.stunTimer--;
+            this.isStunned = true;
+            return;
+        }
+        this.isStunned = false;
+
         // Smoothly interpolate to target position (for clients)
         if (Math.abs(this.targetX - this.x) > 0.1 || Math.abs(this.targetY - this.y) > 0.1) {
             this.x += (this.targetX - this.x) * 0.25;
@@ -77,8 +87,15 @@ export class Zombie {
         ctx.translate(this.x, this.y);
         
         // ตัวซอมบี้
-        ctx.fillStyle = '#4b5563'; 
+        if (this.isStunned) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#3b82f6';
+            ctx.fillStyle = '#60a5fa';
+        } else {
+            ctx.fillStyle = '#4b5563'; 
+        }
         ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
         
         // ตาแดง
         ctx.fillStyle = '#ef4444'; 

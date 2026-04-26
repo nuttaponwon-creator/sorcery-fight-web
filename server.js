@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
             id: socket.id,
             name: name || 'Sorcerer',
             type, x, y, angle, health, maxHealth,
-            score: 0, isDead: false, isReady: false
+            score: 0, kills: 0, isDead: false, isReady: false
         };
 
         if (!roomData.hostId || !roomData.players[roomData.hostId]) {
@@ -134,7 +134,14 @@ io.on('connection', (socket) => {
 
     socket.on('zombieDeath', (id) => {
         const room = socket.data.room;
-        if (room) socket.to(room).emit('remoteZombieDeath', id);
+        if (room) {
+            if (rooms[room].players[socket.id]) {
+                rooms[room].players[socket.id].kills += 1;
+                rooms[room].players[socket.id].score += 10;
+                io.to(room).emit('leaderboardUpdate', getLeaderboard(room));
+            }
+            socket.to(room).emit('remoteZombieDeath', id);
+        }
     });
 
     socket.on('zombieUpdate', (zombies) => {
@@ -194,10 +201,14 @@ function getReadyStatus(room) {
 
 function getLeaderboard(room) {
     if (!rooms[room]) return [];
-    return Object.values(rooms[room].players)
-        .map(p => ({ name: p.name, score: p.score }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+    const players = Object.values(rooms[room].players)
+        .map(p => ({ name: p.name, score: p.score, kills: p.kills }))
+        .sort((a, b) => b.score - a.score);
+    
+    // Mark MVP
+    if (players.length > 0) players[0].isMVP = true;
+    
+    return players.slice(0, 10);
 }
 
 const PORT = process.env.PORT || 3000;
