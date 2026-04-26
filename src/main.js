@@ -11,7 +11,7 @@ import { audioManager } from './core/AudioManager.js';
 console.log("Game Script Loaded! (Room-Based Multiplayer)");
 
 // Initialize Audio
-audioManager.init('./bgm.mp3');
+audioManager.init();
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
