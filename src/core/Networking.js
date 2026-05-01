@@ -6,8 +6,9 @@ export class Networking {
         this.RemotePlayer = remotePlayerClass;
         this.spawnObject = spawnObjectCallback;
         this.socket = null;
-        this.remotePlayers = {}; 
+        this.remotePlayers = {};
         this.isHost = false;
+        this.mode = 'pve'; // 'pve' | 'pvp'
     }
 
     connect(playerData) {
@@ -16,13 +17,35 @@ export class Networking {
             return;
         }
 
-        const protocol = window.location.protocol;
-        const host = window.location.hostname;
-        const port = host === 'localhost' ? ':4000' : '';
-        this.socket = io(`${protocol}//${host}${port}`);
+        if (typeof io === 'undefined') {
+            console.error("[NET] FATAL: Socket.io (io) is not defined! Check script tag in index.html.");
+            return;
+        }
+
+        const protocol = window.location.protocol === 'file:' ? 'http:' : window.location.protocol;
+        const host = window.location.hostname === '' ? 'localhost' : window.location.hostname;
+        
+        // If we are on localhost, use port 4000. If on production, use current origin.
+        const serverUrl = (host === 'localhost' || host === '127.0.0.1') ? `http://localhost:4000` : window.location.origin;
+        console.log(`[NET] Attempting connection to: ${serverUrl}`);
+        
+        try {
+            this.socket = io(serverUrl, {
+                reconnectionAttempts: 5,
+                timeout: 10000,
+                transports: ['websocket', 'polling']
+            });
+        } catch (e) {
+            console.error("[NET] Socket.io Initialization Error:", e);
+            return;
+        }
+
+        this.socket.on('connect_error', (err) => {
+            console.error('[NET] Connection Error:', err);
+        });
 
         this.socket.on('connect', () => {
-            console.log('Connected to server!');
+            console.log('[NET] Connected to server!');
             this.socket.emit('joinGame', playerData);
         });
 
@@ -60,7 +83,9 @@ export class Networking {
         });
 
         this.socket.on('playerHealthUpdated', (data) => {
-            if (this.remotePlayers[data.id]) {
+            if (data.id === this.socket.id) {
+                if (this.gameState.player) this.gameState.player.health = data.health;
+            } else if (this.remotePlayers[data.id]) {
                 this.remotePlayers[data.id].health = data.health;
             }
         });
@@ -85,7 +110,7 @@ export class Networking {
 
         // NEW: Leaderboard Update
         this.socket.on('leaderboardUpdate', (data) => {
-            if (this.onLeaderboardUpdate) this.onLeaderboardUpdate(data);
+            if (this.onLeaderboard) this.onLeaderboard(data);
         });
 
         // NEW: Ready Update
@@ -100,10 +125,36 @@ export class Networking {
 
         // NEW: Chat Messages
         this.socket.on('newChatMessage', (data) => {
-            if (this.onChatMessage) this.onChatMessage(data);
+            if (this.onChat) this.onChat(data.name, data.message);
         });
 
-        // Zombie Sync Events
+        // NEW: Room mode (pvp/pve)
+        this.socket.on('roomMode', (mode) => {
+            this.mode = mode;
+            if (this.onRoomMode) this.onRoomMode(mode);
+        });
+
+        this.socket.on('syncWave', (wave) => {
+            if (this.onSyncWave) this.onSyncWave(wave);
+        });
+
+        this.socket.on('syncScore', (score) => {
+            if (this.onSyncScore) this.onSyncScore(score);
+        });
+
+        // ─── PVP Events ───────────────────────────────────────────────────────
+        this.socket.on('pvpKill', (data) => {
+            if (this.onPvpKill) this.onPvpKill(data);
+        });
+        this.socket.on('pvpScoreUpdate', (scores) => {
+            if (this.onPvpScoreUpdate) this.onPvpScoreUpdate(scores);
+        });
+        this.socket.on('pvpRoundStart', (data) => {
+            if (this.onPvpRoundStart) this.onPvpRoundStart(data);
+        });
+        this.socket.on('pvpRoundEnd', (data) => {
+            if (this.onPvpRoundEnd) this.onPvpRoundEnd(data);
+        });
         this.socket.on('remoteZombieHit', (data) => {
             if (this.onRemoteZombieHit) this.onRemoteZombieHit(data);
         });
@@ -123,6 +174,19 @@ export class Networking {
             if (!this.isHost) {
                 if (this.onRemoteZombieUpdate) this.onRemoteZombieUpdate(zombies);
             }
+        });
+
+        // NEW: Projectile Sync
+        this.socket.on('remoteProjectileSpawn', (data) => {
+            if (this.onRemoteProjectileSpawn) this.onRemoteProjectileSpawn(data);
+        });
+
+        this.socket.on('newHost', (hostId) => {
+            console.log('New Host assigned:', hostId);
+            if (hostId === this.socket.id) {
+                this.isHost = true;
+            }
+            if (this.onNewHost) this.onNewHost(hostId);
         });
     }
 
@@ -145,8 +209,17 @@ export class Networking {
         if (this.socket) this.socket.emit('playerMovement', { x, y, angle });
     }
 
-    sendHealthUpdate(health) {
-        if (this.socket) this.socket.emit('playerHealthUpdate', { health });
+    sendDamage(amount) {
+        if (this.socket) this.socket.emit('playerTakeDamage', { amount });
+    }
+
+    // PVP: deal damage to a specific remote player
+    sendPvpDamage(targetId, amount) {
+        if (this.socket) this.socket.emit('pvpHit', { targetId, damage: amount });
+    }
+
+    sendHeal(amount) {
+        if (this.socket) this.socket.emit('playerHeal', { amount });
     }
 
     sendScore(score) {
@@ -155,6 +228,10 @@ export class Networking {
 
     sendChatMessage(msg) {
         if (this.socket) this.socket.emit('chatMessage', msg);
+    }
+
+    sendWave(wave) {
+        if (this.socket && this.isHost) this.socket.emit('updateWave', wave);
     }
 
     sendReady(val) {
@@ -169,13 +246,17 @@ export class Networking {
         if (this.socket) this.socket.emit('playerAction', { type, angle });
     }
 
+    sendProjectileSpawn(data) {
+        if (this.socket) this.socket.emit('projectileSpawn', { ...data, ownerId: this.socket.id });
+    }
+
     // Zombie Sync Methods
     sendZombieSpawn(zombieData) {
         if (this.socket && this.isHost) this.socket.emit('zombieSpawn', zombieData);
     }
 
-    sendZombieDeath(zombieId) {
-        if (this.socket) this.socket.emit('zombieDeath', zombieId);
+    sendZombieDeath(zombieId, points = 10) {
+        if (this.socket) this.socket.emit('zombieDeath', { id: zombieId, points });
     }
 
     sendZombieHit(zombieId, damage) {

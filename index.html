@@ -1,185 +1,274 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>JJK Survival: Domain Expansion</title>
-
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <div id="youtube-player" style="display:none"></div>
+    <!-- Audio Layer -->
+    <div id="youtube-player" style="position:absolute;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></div>
 
-    <div id="ui-layer">
-
-        <div class="hud-panel">
-            <div class="score-box">
-                <div class="score-label">CURSE POINTS</div>
-                <div id="score-display">0</div>
-            </div>
-
-            <div class="score-box" style="border-left: 2px solid rgba(255,255,255,0.1); padding-left: 15px;">
-                <div class="score-label">WAVE</div>
-                <div id="wave-display" style="color: #ef4444">1</div>
-            </div>
-
-            <div class="hp-wrapper">
-                <div class="hp-label">VITALITY STATUS</div>
-                <div class="hp-container">
-                    <div id="health-bar" style="width: 100%"></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="skills-hud" class="hidden">
-            <div class="skill-slot">
-                <span class="skill-key">Q</span>
-                <span id="icon-q" class="text-2xl">⚡</span>
-                <div id="cd-q" class="skill-overlay" style="height: 0%"></div>
-            </div>
-            <div class="skill-slot">
-                <span class="skill-key">E</span>
-                <span id="icon-e" class="text-2xl">🔵</span>
-                <div id="cd-e" class="skill-overlay" style="height: 0%"></div>
-            </div>
-            <div class="skill-slot">
-                <span class="skill-key">R</span>
-                <span id="icon-r" class="text-2xl">🔴</span>
-                <div id="cd-r" class="skill-overlay" style="height: 0%"></div>
-            </div>
-            <div class="skill-slot ult">
-                <span class="skill-key">SPC</span>
-                <span id="icon-space" class="text-2xl">🟣</span>
-                <div id="cd-space" class="skill-overlay" style="height: 0%"></div>
-            </div>
-        </div>
-
-        <div id="menu-screen" class="interactive">
-            <h1>JUJUTSU <span style="color:#a855f7">SURVIVAL</span></h1>
-            
+    <!-- Lobby Layer -->
+    <div id="setup-menu">
+        <div class="lobby-container glass">
             <div id="setup-menu-content">
-                <!-- NEW: Name Input -->
-                <div class="mb-6">
-                    <input type="text" id="player-name" placeholder="ENTER YOUR NAME..." maxlength="12" 
-                        class="bg-black/50 border border-white/20 text-white text-center py-2 px-4 rounded-lg focus:border-purple-500 outline-none tracking-widest uppercase font-bold w-64">
+                <div class="game-logo">JJK WORLD</div>
+                
+                <div class="section-title">Select Your Sorcerer</div>
+                <div class="char-selection-grid">
+                    <div id="card-gojo" class="char-card selected" onclick="selectChar('gojo')" data-char="gojo">
+                        <img src="gojo_portrait_1777620033488.png" alt="Gojo">
+                        <div class="char-card-info">
+                            <div class="char-card-name" style="color:var(--theme-gojo)">GOJO SATORU</div>
+                            <div class="char-card-sub">The Strongest</div>
+                        </div>
+                    </div>
+                    <div id="card-toji" class="char-card" onclick="selectChar('toji')" data-char="toji">
+                        <img src="toji_portrait_1777620064684.png" alt="Toji">
+                        <div class="char-card-info">
+                            <div class="char-card-name" style="color:var(--theme-toji)">TOJI FUSHIGURO</div>
+                            <div class="char-card-sub">Sorcerer Killer</div>
+                        </div>
+                    </div>
+                    <div id="card-sukuna" class="char-card" onclick="selectChar('sukuna')" data-char="sukuna">
+                        <img src="sukuna_portrait_1777620049660.png" alt="Sukuna">
+                        <div class="char-card-info">
+                            <div class="char-card-name" style="color:var(--theme-sukuna)">RYOMEN SUKUNA</div>
+                            <div class="char-card-sub">King of Curses</div>
+                        </div>
+                    </div>
+                    <div id="card-yuta" class="char-card" onclick="selectChar('yuta')" data-char="yuta">
+                        <img src="yuta_portrait_v2_1777620094643.png" alt="Yuta">
+                        <div class="char-card-info">
+                            <div class="char-card-name" style="color:var(--theme-yuta)">YUTA OKKOTSU</div>
+                            <div class="char-card-sub">Special Grade</div>
+                        </div>
+                    </div>
                 </div>
 
-                <p class="text-gray-400 mb-6 tracking-widest">CHOOSE YOUR SORCERER</p>
+                <div class="section-title">Battle Mode</div>
+                <div class="mode-row">
+                    <button id="mode-pve" class="mode-btn active-pve" onclick="selectMode('pve')">CURSED SPIRIT HUNT (PVE)</button>
+                    <button id="mode-pvp" class="mode-btn" onclick="selectMode('pvp')">SORCERER CLASH (PVP)</button>
+                </div>
 
-                <div class="flex flex-col md:flex-row gap-6 justify-center mb-10">
-                    <div id="card-gojo" class="character-card selected" onclick="selectChar('gojo')">
-                        <div class="text-6xl mb-4">👁️</div>
-                        <h2 class="text-3xl font-bold text-white mb-2">GOJO SATORU</h2>
-                        <p class="text-blue-400 text-sm tracking-wider">THE STRONGEST</p>
+                <div style="display:flex; gap:16px; margin-bottom:16px;">
+                    <div style="flex:1">
+                        <div class="section-title">Sorcerer Name</div>
+                        <input id="player-name" class="input-field" placeholder="ENTER NAME..." maxlength="12">
                     </div>
-                    <div id="card-toji" class="character-card" onclick="selectChar('toji')">
-                        <div class="text-6xl mb-4">🗡️</div>
-                        <h2 class="text-3xl font-bold text-white mb-2">TOJI</h2>
-                        <p class="text-green-500 text-sm tracking-wider">SORCERER KILLER</p>
-                    </div>
-                    <div id="card-sukuna" class="character-card" onclick="selectChar('sukuna')">
-                        <div class="text-6xl mb-4">👹</div>
-                        <h2 class="text-3xl font-bold text-white mb-2">RYOMEN SUKUNA</h2>
-                        <p class="text-red-500 text-sm tracking-wider">KING OF CURSES</p>
-                    </div>
-                    <div id="card-yuta" class="character-card" onclick="selectChar('yuta')">
-                        <div class="text-6xl mb-4">💍</div>
-                        <h2 class="text-3xl font-bold text-white mb-2">YUTA</h2>
-                        <p class="text-gray-300 text-sm tracking-wider">PURE LOVE</p>
+                    <div style="flex:1">
+                        <div class="section-title">Realm Code</div>
+                        <input id="room-input" class="input-field" placeholder="JJK1">
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-3 w-full max-w-md mx-auto mb-6">
-                    <input type="text" id="room-input" placeholder="ENTER ROOM CODE (e.g. JJK1)" 
-                        class="bg-gray-800 border-2 border-gray-600 text-white text-center py-3 rounded tracking-widest focus:border-purple-500 outline-none">
-                    
-                    <div class="flex gap-3">
-                        <button id="join-room-btn" class="interactive flex-1 py-3 bg-purple-600 hover:bg-purple-500 font-bold tracking-widest rounded">
-                            JOIN ROOM
-                        </button>
-                        <button id="create-room-btn" class="interactive flex-1 py-3 bg-gray-700 hover:bg-gray-600 font-bold tracking-widest rounded border-2 border-gray-500">
-                            CREATE ROOM
-                        </button>
-                    </div>
+                <div style="display:flex; gap:16px;">
+                    <button id="join-room-btn" class="btn-action btn-primary">Enter Realm</button>
+                    <button id="create-room-btn" class="btn-action btn-secondary">Create Realm</button>
                 </div>
             </div>
 
-            <button id="start-btn" class="hidden">
-                DOMAIN EXPANSION (START)
-            </button>
+            <div id="ready-section" class="hidden" style="text-align:center;">
+                <div class="section-title">Realm Status</div>
+                <div id="room-display" style="font-size:2rem; font-weight:900; color:var(--primary); margin-bottom:12px;">-</div>
+                <div class="section-title">Sorcerers in Realm</div>
+                <div id="ready-list" style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:24px;"></div>
+                <button id="ready-btn" class="btn-action btn-primary" style="padding:16px 60px;">I AM READY</button>
+            </div>
+        </div>
+    </div>
 
-            <!-- NEW: Ready Section -->
-            <div id="ready-section" class="hidden mt-6">
-                <div class="mb-4">
-                    <span class="text-xs text-gray-500 block mb-1">CURRENT REALM</span>
-                    <span id="room-display" class="text-3xl font-bold text-purple-400 tracking-widest border-b-2 border-purple-500 pb-1">JJK1</span>
+    <!-- Gameplay UI Layer -->
+    <div id="ui-layer">
+        <!-- Top Stats -->
+        <div class="hud-panel-top">
+            <div class="stat-group">
+                <div class="stat-label">Cursed Energy</div>
+                <div id="score-display" class="stat-value text-glow">0</div>
+            </div>
+
+            <div class="stat-group" style="align-items:center;">
+                <div class="stat-label">Current Wave</div>
+                <div id="wave-display" class="stat-value" style="color:var(--danger)">1</div>
+            </div>
+
+            <div class="stat-group" style="align-items:flex-end;">
+                <div class="stat-label">Vitality status</div>
+                <div class="health-container">
+                    <div id="health-bar-fill" class="health-bar-fill"></div>
                 </div>
-                <p class="text-gray-400 mb-4 tracking-widest">WAITING FOR SORCERERS...</p>
-                <div id="ready-list" class="flex flex-wrap justify-center gap-4 mb-6"></div>
-                <button id="ready-btn" class="interactive">
-                    I AM READY
-                </button>
             </div>
         </div>
 
-        <!-- NEW: Spectator Overlay -->
-        <div id="spectator-overlay" class="hidden">
-            <div class="spectator-info">
-                <span class="pulse">●</span> SPECTATING: <span id="spectator-target">PLAYER</span>
+        <!-- Overlays -->
+        <div id="wave-clear-overlay" class="hidden epic-overlay">
+            <div class="kanji-subtitle">&#39098;&#22495;&#12434;&#36229;&#12360;&#12383;</div>
+            <div id="wave-clear-label" class="epic-text">WAVE CLEARED</div>
+        </div>
+
+        <div id="boss-clear-overlay" class="hidden epic-overlay">
+            <div class="kanji-subtitle">&#31103;&#38500;&#23436;&#20102;</div>
+            <div id="boss-clear-label" class="epic-text" style="color:var(--warning)">CURSE ELIMINATED</div>
+        </div>
+
+
+        <!-- Skills Hub -->
+        <div id="skills-hud" class="glass">
+            <div class="skill-slot" id="skill-q">
+                <span class="key-hint">Q</span>
+                <div id="cooldown-q" class="cooldown-fill"></div>
+                <div id="cd-text-q" style="font-size:12px; font-weight:900; z-index:2;"></div>
             </div>
-            <div class="spectator-hint">YOU ARE DECEASED. WAIT FOR REINCARNATION.</div>
+            <div class="skill-slot" id="skill-e">
+                <span class="key-hint">E</span>
+                <div id="cooldown-e" class="cooldown-fill"></div>
+                <div id="cd-text-e" style="font-size:12px; font-weight:900; z-index:2;"></div>
+            </div>
+            <div class="skill-slot" id="skill-r">
+                <span class="key-hint">R</span>
+                <div id="cooldown-r" class="cooldown-fill"></div>
+                <div id="cd-text-r" style="font-size:12px; font-weight:900; z-index:2;"></div>
+            </div>
+            <div class="skill-slot" id="skill-ult" style="width:72px; height:72px; margin-top:-6px; border-color:var(--primary);">
+                <span class="key-hint">SPC</span>
+                <div id="cooldown-ult" class="cooldown-fill"></div>
+                <div id="cd-text-space" style="font-size:14px; font-weight:900; z-index:2;"></div>
+            </div>
         </div>
 
-        <!-- NEW: Leaderboard -->
-        <div id="leaderboard" class="hidden">
-            <div class="leader-title">RANKINGS</div>
-            <div id="leader-list"></div>
-        </div>
-
-        <!-- NEW: Chat System -->
-        <div id="chat-container" class="hidden">
+        <!-- Chat -->
+        <div id="chat-container">
             <div id="chat-messages"></div>
-            <input type="text" id="chat-input" placeholder="Type message..." maxlength="50" class="interactive">
+            <input id="chat-input" placeholder="Communicate...">
         </div>
 
-        <div id="top-left-ui">
-            <button id="music-toggle" class="interactive">🎵 MUSIC: ON</button>
+        <!-- Audio Controls -->
+        <div id="audio-controls">
+            <button id="music-toggle" class="audio-btn">MUSIC: ON</button>
+            <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
+                <div class="stat-label" style="font-size:0.5rem; opacity:0.5;">BGM VOLUME</div>
+                <div style="display:flex; gap:4px;">
+                    <button id="bgm-vol-down" class="audio-btn">-</button>
+                    <div class="audio-btn" style="min-width:40px; text-align:center;" id="bgm-vol-display">30%</div>
+                    <button id="bgm-vol-up" class="audio-btn">+</button>
+                </div>
+                <div class="stat-label" style="font-size:0.5rem; opacity:0.5; margin-top:4px;">SFX VOLUME</div>
+                <div style="display:flex; gap:4px;">
+                    <button id="sfx-vol-down" class="audio-btn">-</button>
+                    <div class="audio-btn" style="min-width:40px; text-align:center;" id="sfx-vol-display">50%</div>
+                    <button id="sfx-vol-up" class="audio-btn">+</button>
+                </div>
+            </div>
         </div>
 
-        <div id="joystick-zone">
-            <div id="joystick-knob"></div>
-        </div>
-        <div id="btn-punch" class="mobile-btn">👊</div>
-        <div id="btn-q" class="mobile-btn">Q</div>
-        <div id="btn-e" class="mobile-btn">E</div>
-        <div id="btn-r" class="mobile-btn">R</div>
-        <div id="btn-space" class="mobile-btn">🟣</div>
+        <div id="character-specific-hud">
+            <!-- Gojo -->
+            <div id="six-eyes-hud" class="hidden glass" style="position:fixed; bottom:110px; left:24px; padding:12px; border-radius:12px; width:220px;">
+                <div class="stat-label" style="margin-bottom:4px;">Six Eyes Limit</div>
+                <div id="blue-timer-container">
+                    <div id="blue-timer-bar" style="width: 100%;"></div>
+                </div>
+            </div>
+            
+            <!-- Yuta -->
+            <div id="rika-gauge-container" class="hidden glass" style="position:fixed; bottom:110px; left:24px; padding:12px; border-radius:12px; width:220px;">
+                <div class="stat-label" style="margin-bottom:4px;">Rika Manifestation</div>
+                <div class="gauge-bg"><div id="rika-gauge-bar" class="gauge-fill"></div></div>
+            </div>
 
-        <div class="desktop-hint absolute bottom-5 left-1/2 -translate-x-1/2 text-white/30 text-xs pointer-events-none">
-            [WASD] Move • [Click] Attack • [Q/E/R] Skills • [Space] Ultimate
+            <!-- Sukuna -->
+            <div id="sukuna-domain-container" class="hidden glass" style="position:fixed; bottom:110px; left:24px; padding:12px; border-radius:12px; width:220px;">
+                <div class="stat-label" style="margin-bottom:4px;">Domain Charge</div>
+                <div class="gauge-bg"><div id="sukuna-domain-bar" class="gauge-fill"></div></div>
+            </div>
+
+            <!-- Toji -->
+            <div id="toji-hold-container" class="hidden glass" style="position:fixed; bottom:110px; left:24px; padding:12px; border-radius:12px; width:220px;">
+                <div class="stat-label" style="margin-bottom:4px;">Bloodlust</div>
+                <div class="gauge-bg"><div id="toji-hold-bar" class="gauge-fill"></div></div>
+            </div>
+        </div>
+
+        <!-- Overlays & Game Events -->
+        <div id="kill-feed" class="hidden"></div>
+        
+        <div id="leaderboard" class="glass hidden">
+            <div class="section-title" style="font-size:0.8rem; margin:0;">Top Sorcerers</div>
+            <ul id="leader-list"></ul>
+        </div>
+
+        <div id="pvp-score-hud" class="hidden">
+            <div id="pvp-round-label">ROUND 1</div>
+            <div id="pvp-score-list"></div>
+        </div>
+
+
+        <!-- PVP Banners -->
+        <div id="pvp-round-banner" class="epic-overlay hidden">
+            <div id="pvp-banner-inner" class="epic-text">ROUND START</div>
+            <div id="pvp-banner-title" class="kanji-subtitle">決戦</div>
+            <div id="pvp-banner-desc">ELIMINATE ALL RIVALS</div>
+        </div>
+
+        <div id="pvp-winner-banner" class="epic-overlay hidden">
+            <div class="epic-text" style="color:var(--warning)">VICTORY</div>
+            <div id="pvp-winner-name" class="kanji-subtitle">-</div>
+            <div id="pvp-winner-scores"></div>
+        </div>
+
+        <!-- Spectator / Death -->
+        <div id="spectator-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; display:flex; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+            <div class="epic-text" style="font-size:3rem; color:var(--danger)">DEFEATED</div>
+            <div class="spectator-hint" style="text-align:center; margin-top:20px;">
+                SPECTATING: <span id="spectator-target" style="color:var(--primary); font-weight:900;">NONE</span>
+                <br><br>
+                <button onclick="location.reload()" class="btn-action btn-primary" style="padding:12px 32px;">RETURN TO LOBBY</button>
+            </div>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div id="mobile-hud">
+            <div id="joystick-zone">
+                <div id="joystick-knob"></div>
+            </div>
+            <div id="mobile-skills">
+                <button class="mobile-btn-skill" onclick="window.dispatchEvent(new KeyboardEvent('keydown', {key: 'q'}))">Q</button>
+                <button class="mobile-btn-skill" onclick="window.dispatchEvent(new KeyboardEvent('keydown', {key: 'e'}))">E</button>
+                <button class="mobile-btn-skill" onclick="window.dispatchEvent(new KeyboardEvent('keydown', {key: 'r'}))">R</button>
+                <button class="mobile-btn-skill btn-ult" onclick="window.dispatchEvent(new KeyboardEvent('keydown', {key: ' '}))">ULT</button>
+            </div>
         </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // Global helper for Menu selection
         window.selectedCharType = 'gojo';
-        window.selectChar = (type) => {
+        window.selectChar = function(type) {
             window.selectedCharType = type;
-            document.getElementById('card-gojo').classList.toggle('selected', type === 'gojo');
-            document.getElementById('card-sukuna').classList.toggle('selected', type === 'sukuna');
-            document.getElementById('card-toji').classList.toggle('selected', type === 'toji'); 
-            document.getElementById('card-yuta').classList.toggle('selected', type === 'yuta');
+            ['gojo','sukuna','toji','yuta'].forEach(function(c) {
+                const card = document.getElementById('card-' + c);
+                if (card) card.classList.toggle('selected', c === type);
+            });
+            if (window.gameAudio) window.gameAudio.playBGM();
         };
+        window.selectedMode = 'pve';
+        window.selectMode = function(mode) {
+            window.selectedMode = mode;
+            document.getElementById('mode-pve').className = 'mode-btn' + (mode === 'pve' ? ' active-pve' : '');
+            document.getElementById('mode-pvp').className = 'mode-btn' + (mode === 'pvp' ? ' active-pvp' : '');
+        };
+        
+        // Global Debugger
+        window.addEventListener('click', (e) => {
+            console.log("[CLICK-DEBUG] Target:", e.target.id || e.target.className || e.target.tagName);
+        }, true);
     </script>
-
-    <script type="module" src="./src/main.js"></script>
+    <script type="module" src="./src/main.js?v=4"></script>
 </body>
-
 </html>

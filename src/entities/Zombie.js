@@ -19,6 +19,9 @@ export class Zombie {
         
         this.stunTimer = 0;
         this.isStunned = false;
+        
+        this.burnTimer = 0;
+        this.burnDamage = 0;
     }
     
     setPosition(x, y) {
@@ -34,7 +37,26 @@ export class Zombie {
         this.hp = hp;
     }
 
-    update(player, isHost = false) {
+    update(player, isHost = false, gameState = null, networking = null) {
+        // Dead check first
+        if (this.hp <= 0) {
+            this.dead = true;
+            return;
+        }
+
+        // Burn tick
+        if (this.burnTimer > 0) {
+            this.burnTimer--;
+            if (this.burnTimer % 15 === 0) {
+                // Only host calculates burn damage to avoid double-counting in multiplayer
+                if (isHost) {
+                    this.hp -= this.burnDamage / 4;
+                    if (networking) networking.sendZombieHit(this.id, this.burnDamage / 4);
+                }
+            }
+        }
+
+        // Stun
         if (this.stunTimer > 0) {
             this.stunTimer--;
             this.isStunned = true;
@@ -42,35 +64,26 @@ export class Zombie {
         }
         this.isStunned = false;
 
-        // Smoothly interpolate to target position (for clients only)
+        // Client: interpolate to target position
         if (!isHost) {
             if (Math.abs(this.targetX - this.x) > 0.1 || Math.abs(this.targetY - this.y) > 0.1) {
                 this.x += (this.targetX - this.x) * 0.25;
                 this.y += (this.targetY - this.y) * 0.25;
-                return; 
+                return;
             }
         }
 
-        if (this.hp <= 0) {
-            this.dead = true;
-            return;
-        }
-        
-        if (!player) return; // Skip update if no target player
+        if (!player) return;
 
         const angle = Math.atan2(player.y - this.y, player.x - this.x);
         const vx = Math.cos(angle) * this.speed;
         const vy = Math.sin(angle) * this.speed;
 
         let nextX = this.x + vx;
-        if (!this.checkCollision(nextX, this.y)) {
-            this.x = nextX;
-        }
-        
+        if (!this.checkCollision(nextX, this.y)) this.x = nextX;
+
         let nextY = this.y + vy;
-        if (!this.checkCollision(this.x, nextY)) {
-            this.y = nextY;
-        }
+        if (!this.checkCollision(this.x, nextY)) this.y = nextY;
     }
 
     checkCollision(x, y) {
@@ -85,43 +98,68 @@ export class Zombie {
     }
 
     draw(ctx) {
-        ctx.save(); 
+        ctx.save();
         ctx.translate(this.x, this.y);
-        
-        // ตัวซอมบี้
+
+        // Burn glow
+        if (this.burnTimer > 0) {
+            const burnIntensity = Math.min(1, this.burnTimer / 60);
+            ctx.shadowBlur = 20 * burnIntensity;
+            ctx.shadowColor = '#ff4400';
+        }
+
+        // Stun glow
         if (this.isStunned) {
             ctx.shadowBlur = 15;
             ctx.shadowColor = '#3b82f6';
             ctx.fillStyle = '#60a5fa';
+        } else if (this.burnTimer > 0) {
+            ctx.fillStyle = '#7a3a1a'; // Darkened orange-brown
         } else {
-            ctx.fillStyle = '#4b5563'; 
+            ctx.fillStyle = '#4b5563';
         }
-        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
         ctx.shadowBlur = 0;
-        
-        // ตาแดง
-        ctx.fillStyle = '#ef4444'; 
-        const target = this.player || { x: this.x + 10, y: this.y }; // Look forward if no target
+
+        // Burn flame overlay
+        if (this.burnTimer > 0) {
+            const burnIntensity = Math.min(1, this.burnTimer / 60);
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = `rgba(255, 80, 0, ${0.3 * burnIntensity})`;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Eyes
+        ctx.fillStyle = '#ef4444';
+        const target = this.player || { x: this.x + 10, y: this.y };
         const angle = Math.atan2(target.y - this.y, target.x - this.x);
         ctx.rotate(angle);
-        ctx.beginPath(); ctx.arc(8, -6, 4, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(8, 6, 4, 0, Math.PI*2); ctx.fill();
-        
-        // หมุนกลับมาแนวเดิมเพื่อวาดหลอดเลือด (ไม่ให้หลอดเลือดเอียงตามตัว)
+        ctx.shadowBlur = 8; ctx.shadowColor = '#ef4444';
+        ctx.beginPath(); ctx.arc(8, -6, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(8, 6, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.rotate(-angle);
 
-        // ✅ วาดหลอดเลือด (HP Bar)
-        const barWidth = 40;
-        const barHeight = 6;
-        const hpPercent = this.hp / this.maxHp;
+        // HP Bar
+        const barWidth = 42;
+        const barHeight = 5;
+        const hpPercent = Math.max(0, this.hp / this.maxHp);
+        const hpColor = hpPercent > 0.5 ? '#22c55e' : hpPercent > 0.25 ? '#f59e0b' : '#ef4444';
 
-        // พื้นหลังหลอด (สีดำจางๆ)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(-barWidth/2, -35, barWidth, barHeight);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.beginPath();
+        ctx.roundRect(-barWidth / 2, -36, barWidth, barHeight, 2);
+        ctx.fill();
 
-        // เนื้อหลอดเลือด (สีแดง)
-        ctx.fillStyle = '#dc2626';
-        ctx.fillRect(-barWidth/2, -35, barWidth * hpPercent, barHeight);
+        ctx.fillStyle = hpColor;
+        ctx.beginPath();
+        ctx.roundRect(-barWidth / 2, -36, barWidth * hpPercent, barHeight, 2);
+        ctx.fill();
 
         ctx.restore();
     }

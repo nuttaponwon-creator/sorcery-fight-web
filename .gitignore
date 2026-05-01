@@ -2,3 +2,8 @@ node_modules/
 .DS_Store
 *.log
 .env
+__pycache__/
+*.txt
+*.png
+!assets/**/*.png
+scratch.py

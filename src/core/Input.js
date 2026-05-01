@@ -3,6 +3,9 @@ export class InputHandler {
         this.keys = {};
         this.mouse = { x: 0, y: 0, worldX: 0, worldY: 0 };
         this.joystick = { x: 0, y: 0, active: false };
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        this.joystickActive = false;
+        this.joystickAngle = 0;
         
         // Keyboard
         window.addEventListener('keydown', e => this.keys[e.key.toLowerCase()] = true);
@@ -54,6 +57,8 @@ export class InputHandler {
             this.joystick.x = dx / maxR;
             this.joystick.y = dy / maxR;
             this.joystick.active = true;
+            this.joystickActive = true;
+            this.joystickAngle = Math.atan2(dy, dx);
         };
 
         const reset = (e) => {
@@ -62,6 +67,7 @@ export class InputHandler {
             this.joystick.x = 0;
             this.joystick.y = 0;
             this.joystick.active = false;
+            this.joystickActive = false;
         };
 
         zone.addEventListener('touchstart', handleMove, {passive: false});
